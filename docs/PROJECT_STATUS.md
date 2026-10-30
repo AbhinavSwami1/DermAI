@@ -61,3 +61,66 @@ Three transfer-learning experiments were conducted using the PAD-UFES-20 dataset
 
 The test partition was not used for Phase 5 model selection. Results are based on one patient-safe validation split. External clinical validation has not been performed.
 DermAI remains an academic research and screening-support project, not an autonomous diagnostic system.
+## **Phase 6: Lesion Localization and Explainability — Completed**
+
+### Annotation Audit
+
+The locally available PAD-UFES-20 and Fitzpatrick17k dataset files
+were inspected for spatial annotations.
+
+- Image-level diagnostic labels are available.
+- No bounding-box coordinates or segmentation masks were identified
+  in the inspected local dataset files.
+- Lesion measurements and anatomical body-region metadata are not
+  pixel-level localization annotations.
+
+### Approach
+
+Grad-CAM was implemented using the trained MobileNetV3-Small
+baseline checkpoint.
+
+The prototype generates class-discriminative activation heatmaps
+and overlays them on the original input images.
+
+### Qualitative Evaluation
+
+Six held-out test examples were visualized, one from each
+PAD-UFES-20 diagnostic class.
+
+- Generated visualizations: 6
+- Correct classifications among these examples: 4
+- Lesion-focused activation was observed in several examples.
+- Background activation and partial lesion coverage were also
+  observed.
+- Correct classification did not always imply reliable
+  lesion-focused activation.
+
+These six examples are illustrative and do not establish
+localization performance.
+
+### Evaluation Limitations
+
+No ground-truth spatial annotations were available in the
+inspected local dataset files. Therefore, Dice, IoU and
+bounding-box localization metrics could not be calculated.
+
+Grad-CAM is an explainability visualization, not a verified
+lesion segmentation or boundary-detection method.
+
+### Artifacts
+
+- `docs/GRADCAM_LOCALIZATION_REPORT.md`
+- `ml/src/explainability/gradcam.py`
+- `ml/src/explainability/generate_visualizations.py`
+- `ml/outputs/gradcam/` (generated visualizations and CSV;
+  excluded from Git if covered by `.gitignore`)
+
+### Conclusion
+
+The Grad-CAM prototype was integrated with the existing
+classification workflow as an experimental explainability
+component. Further evaluation with spatially annotated data
+and a larger sample is required.
+
+DermAI remains an academic research prototype and is not
+a clinically validated diagnostic system.
