@@ -14,3 +14,42 @@ classes:
 - NEV
 - SCC
 - SEK
+
+dataset: PAD-UFES-20
+
+experiment:
+  selected_fold: 1
+  random_state: 42
+
+outer_split:
+  strategy: StratifiedGroupKFold
+  group_column: patient_id
+  n_splits: 5
+
+inner_split:
+  strategy: GroupShuffleSplit
+  group_column: patient_id
+  validation_size: 0.20
+
+partitions:
+  training_images: 1477
+  validation_images: 361
+  testing_images: 460
+
+labels:
+  column: diagnostic
+  classes:
+    ACK: 0
+    BCC: 1
+    MEL: 2
+    NEV: 3
+    SCC: 4
+    SEK: 5
+
+leakage_prevention:
+  enabled: true
+  grouping_column: patient_id
+
+test_policy:
+  use_during_training: false
+  use_for_final_evaluation_only: true
