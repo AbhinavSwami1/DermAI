@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+psycopg[binary]
+python-multipart
+python-dotenv
+pillow
+opencv-python
+PyJWT
+pwdlib[argon2]
+email-validator
+pytest
+httpx
