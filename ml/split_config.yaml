@@ -53,3 +53,23 @@ leakage_prevention:
 test_policy:
   use_during_training: false
   use_for_final_evaluation_only: true
+
+training:
+  model_name: mobilenet_v3_small
+  num_classes: 6
+  batch_size: 16
+  epochs: 20
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  optimizer: Adam
+  loss_function: WeightedCrossEntropyLoss
+  device: auto
+
+  early_stopping:
+    enabled: true
+    patience: 5
+    monitor: val_loss
+
+  checkpoint:
+    save_best_only: true
+    monitor: val_loss

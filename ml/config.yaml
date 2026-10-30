@@ -1,9 +1,6 @@
-# DermAI Image Preprocessing Configuration
-
 dataset:
   name: PAD-UFES-20
   total_images: 2298
-
 preprocessing:
   image_size: 224
   color_mode: RGB
@@ -14,9 +11,49 @@ preprocessing:
     max_value: 1.0
   output_format: float32
   channels: 3
-
 validation:
   total_images_tested: 2298
   successfully_processed: 2298
   failed_images: 0
   success_rate: 100.0
+  training: null
+  model_name: mobilenet_v3_small
+  num_classes: 6
+  batch_size: 16
+  epochs: 20
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  optimizer: Adam
+  loss_function: WeightedCrossEntropyLoss
+  device: auto
+  early_stopping:
+    enabled: true
+    patience: 5
+    monitor: val_loss
+  checkpoint:
+    save_best_only: true
+    monitor: val_loss
+evaluation:
+  metrics:
+  - accuracy
+  - precision
+  - recall
+  - f1_score
+  - confusion_matrix
+training:
+  model_name: mobilenet_v3_small
+  num_classes: 6
+  batch_size: 16
+  epochs: 20
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  optimizer: Adam
+  loss_function: WeightedCrossEntropyLoss
+  device: auto
+  early_stopping:
+    enabled: true
+    patience: 5
+    monitor: val_loss
+  checkpoint:
+    save_best_only: true
+    monitor: val_loss

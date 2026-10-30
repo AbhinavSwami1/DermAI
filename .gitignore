@@ -31,8 +31,14 @@ backend/storage/*
 *.h5
 *.keras
 *.onnx
-ml/checkpoints/*
-ml/outputs/predictions/*
+ml/checkpoints/
+
+# Generated model outputs
+ml/outputs/
+
+# Keep output directories available
+!ml/outputs/.gitkeep
+
 
 # Logs and temporary files
 *.log
