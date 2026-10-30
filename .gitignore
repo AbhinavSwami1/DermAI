@@ -1,0 +1,48 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset files - NEVER PUSH RAW DATA
+ml/datasets/raw/*
+ml/datasets/processed/*
+backend/storage/*
+!ml/datasets/raw/.gitkeep
+!ml/datasets/processed/.gitkeep
+!backend/storage/.gitkeep
+
+# Model checkpoints and large files
+*.pth
+*.pt
+*.h5
+*.keras
+*.onnx
+ml/checkpoints/*
+ml/outputs/predictions/*
+
+# Logs and temporary files
+*.log
+.DS_Store
+Thumbs.db
+
+# Frontend
+node_modules/
+dist/
+build/
+.next/
+.env.local
+
+# IDE
+.vscode/
+.idea/
