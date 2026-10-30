@@ -1,0 +1,22 @@
+# DermAI Image Preprocessing Configuration
+
+dataset:
+  name: PAD-UFES-20
+  total_images: 2298
+
+preprocessing:
+  image_size: 224
+  color_mode: RGB
+  interpolation: LANCZOS
+  normalization:
+    method: rescale
+    min_value: 0.0
+    max_value: 1.0
+  output_format: float32
+  channels: 3
+
+validation:
+  total_images_tested: 2298
+  successfully_processed: 2298
+  failed_images: 0
+  success_rate: 100.0
