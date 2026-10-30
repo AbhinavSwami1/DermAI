@@ -124,3 +124,53 @@ and a larger sample is required.
 
 DermAI remains an academic research prototype and is not
 a clinically validated diagnostic system.
+
+---
+
+## W2.3 — FastAPI Backend Foundation
+
+### Implemented Components
+
+- Initialized the FastAPI application.
+- Added root endpoint: `GET /`.
+- Added health endpoint: `GET /health`.
+- Added image upload endpoint: `POST /api/v1/upload`.
+- Implemented JPEG and PNG image format validation.
+- Added a maximum upload size limit of 10 MB.
+- Added minimum image dimensions validation of 224 x 224 pixels.
+- Added corrupted and unsupported image rejection.
+- Implemented UUID-based filenames for uploaded images.
+- Added original image storage under `backend/storage/original/`.
+
+### Automated Testing
+
+Created automated API tests using pytest and FastAPI TestClient.
+
+| Test Case | Result |
+|---|---|
+| Valid PNG upload | Passed |
+| Valid JPEG upload | Passed |
+| Corrupted image rejection | Passed |
+| Unsupported GIF rejection | Passed |
+| Small image rejection | Passed |
+| Oversized file rejection | Passed |
+
+**Test Summary:** 6 passed, 0 failed.
+
+### Current Limitations
+
+- Database integration is pending.
+- User authentication and authorization are pending.
+- Uploaded images are stored locally.
+- Case and prediction records are not yet created.
+- Image upload validation does not establish diagnostic accuracy.
+
+### Conclusion
+
+The initial FastAPI backend and image upload validation workflow
+have been implemented and tested successfully. Database
+integration, authentication, and model inference API integration
+remain future development tasks.
+
+DermAI is an academic research prototype and is not a clinically
+validated diagnostic system.
