@@ -15,8 +15,11 @@ ENV/
 .ipynb_checkpoints/
 
 # Dataset files - NEVER PUSH RAW DATA
-ml/datasets/raw/*
-ml/datasets/processed/*
+# Dataset files - NEVER PUSH DATA
+ml/datasets/raw/
+ml/datasets/processed/
+ml/datasets/splits/
+backend/storage/
 backend/storage/*
 !ml/datasets/raw/.gitkeep
 !ml/datasets/processed/.gitkeep

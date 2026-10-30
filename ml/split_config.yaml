@@ -1,0 +1,16 @@
+dataset: PAD-UFES-20
+split_strategy: StratifiedGroupKFold
+group_column: patient_id
+label_column: diagnostic
+image_column: img_id
+n_splits: 5
+shuffle: true
+random_state: 42
+patient_leakage_prevention: true
+classes:
+- ACK
+- BCC
+- MEL
+- NEV
+- SCC
+- SEK
