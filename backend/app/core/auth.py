@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import jwt
 from dotenv import load_dotenv
@@ -38,6 +38,7 @@ def create_access_token(user_id: UUID) -> str:
         "sub": str(user_id),
         "exp": now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         "iat": now,
+        "jti": str(uuid4()),  # Unique ID for every access token
     }
 
     return jwt.encode(
@@ -79,6 +80,7 @@ def get_current_user(
     try:
         payload = decode_access_token(credentials.credentials)
         user_id = UUID(payload["sub"])
+
     except (jwt.InvalidTokenError, KeyError, ValueError, TypeError):
         raise unauthorized
 

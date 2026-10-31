@@ -385,3 +385,70 @@ Conclusion
 Login rate limiting has been integrated into the DermAI FastAPI backend using SlowAPI. The login endpoint limits clients to five attempts per minute and rejects excess requests with HTTP 429. The complete backend test suite passes all 30 automated tests.
 
 DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+
+## W2.9 — Refresh Token Lifecycle Management
+
+**Status: Completed**
+
+### Implemented Features
+
+- Database-backed refresh token management.
+- Cryptographically secure opaque refresh token generation.
+- SHA-256 hashing before PostgreSQL storage.
+- Seven-day refresh token expiration.
+- HttpOnly refresh token cookies.
+- Refresh token rotation after successful refresh requests.
+- Token-family tracking using UUIDs.
+- Refresh token reuse detection and family revocation.
+- Logout with refresh token revocation and cookie clearing.
+- Unique JWT ID (`jti`) claims for access tokens.
+
+### Authentication Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/v1/auth/login` | Authenticate and issue access and refresh tokens |
+| POST | `/api/v1/auth/refresh` | Rotate refresh token and issue a new access token |
+| POST | `/api/v1/auth/logout` | Revoke refresh token and clear authentication cookie |
+
+### Security Configuration
+
+| Setting | Configuration |
+|---|---|
+| Access token algorithm | HS256 |
+| Access token expiration | 30 minutes |
+| Refresh token expiration | 7 days |
+| Refresh token storage | SHA-256 hash |
+| Refresh token delivery | HttpOnly cookie |
+| Cookie SameSite | Lax |
+| Cookie Secure | Configurable |
+| Token rotation | Enabled |
+| Reuse detection | Enabled |
+| Token-family revocation | Enabled |
+
+### Automated Testing
+
+- Refresh token persistence: passed.
+- Refresh token expiration: passed.
+- Refresh token rotation: passed.
+- Token-family revocation: passed.
+- Secure refresh cookie: passed.
+- Refresh API: passed.
+- Logout and cookie clearing: passed.
+- Refresh token replay protection: passed.
+- Complete backend regression suite: **38 passed, 0 failed**.
+
+### Security Limitations
+
+- Previously issued access JWTs remain valid until expiration, even after logout.
+- CSRF protections require additional review before production deployment.
+- Redis-backed rate-limit storage is recommended for multi-worker deployments.
+- HTTPS and the Secure cookie attribute must be enforced in production.
+
+### Conclusion
+
+The DermAI backend now supports refresh token generation, hashed database storage, token rotation, reuse detection, token-family revocation, and logout.
+
+All 38 backend automated tests pass.
+
+DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
