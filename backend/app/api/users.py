@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import User
+from app.models import User, Role, UserRole
 from app.schemas import UserCreate, UserResponse
+
 
 router = APIRouter(prefix="/api/v1/users", tags=["Users"])
 
@@ -32,21 +33,47 @@ def register_user(
             detail="Email is already registered.",
         )
 
-    new_user = User(
-        email=user_data.email,
-        password_hash=hash_password(user_data.password),
-        full_name=user_data.full_name,
-    )
-
     try:
+        # Find the default Patient role
+        patient_role = db.scalar(
+            select(Role).where(Role.role_name == "Patient")
+        )
+
+        # Create the role if it does not exist
+        if patient_role is None:
+            patient_role = Role(
+                role_name="Patient",
+                description="Standard user with access to their own cases.",
+            )
+            db.add(patient_role)
+            db.flush()
+
+        # Create the user
+        new_user = User(
+            email=user_data.email,
+            password_hash=hash_password(user_data.password),
+            full_name=user_data.full_name,
+        )
+
         db.add(new_user)
+        db.flush()
+
+        # Assign Patient role
+        user_role = UserRole(
+            user_id=new_user.user_id,
+            role_id=patient_role.role_id,
+        )
+
+        db.add(user_role)
+
         db.commit()
         db.refresh(new_user)
+
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Unable to register user. Email may already exist.",
+            detail="Unable to register user. Email or role may already exist.",
         )
 
     return new_user

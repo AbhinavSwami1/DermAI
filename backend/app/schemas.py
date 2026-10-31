@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Literal
 
 
 # -------------------------
@@ -63,3 +64,29 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+# -------------------------
+# ROLE MANAGEMENT SCHEMAS
+# -------------------------
+
+class RoleAssignmentRequest(BaseModel):
+    role_name: Literal[
+        "Patient",
+        "Dermatologist",
+        "Medical Researcher",
+        "Data Scientist",
+        "Administrator",
+    ]
+
+
+class RoleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    role_id: UUID
+    role_name: str
+    description: str | None
+
+
+class UserRoleResponse(BaseModel):
+    user_id: UUID
+    roles: list[str]

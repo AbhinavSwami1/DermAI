@@ -2,6 +2,9 @@ from uuid import uuid4
 
 from app.core.security import verify_password
 from app.models import User
+from sqlalchemy import select
+from app.models import Role, User, UserRole
+from app.core.database import get_db
 
 
 def create_authenticated_user(client):
@@ -122,3 +125,56 @@ def test_current_user_profile_invalid_token(client):
     )
 
     assert response.status_code == 401
+
+def test_new_user_receives_patient_role(client, db_session):
+    response = client.post(
+        "/api/v1/users/register",
+        json={
+            "email": "patient-role-test@dermai.com",
+            "password": "SecurePass@123",
+            "full_name": "Patient Role Test",
+        },
+    )
+
+    assert response.status_code == 201
+
+    user = db_session.scalar(
+        select(User).where(
+            User.email == "patient-role-test@dermai.com"
+        )
+    )
+
+    assert user is not None
+
+    assigned_role = db_session.scalar(
+        select(Role.role_name)
+        .join(UserRole, UserRole.role_id == Role.role_id)
+        .where(UserRole.user_id == user.user_id)
+    )
+
+    assert assigned_role == "Patient"
+
+def test_patient_role_is_not_administrator(client):
+    token = create_authenticated_user(client)
+
+    from app.core.auth import require_roles
+    from fastapi import Depends, FastAPI
+    from fastapi.testclient import TestClient
+
+    role_test_app = FastAPI()
+    role_test_app.dependency_overrides[get_db] = client.app.dependency_overrides[get_db]
+
+    @role_test_app.get("/admin-only")
+    def admin_only(
+        user=Depends(require_roles("Administrator")),
+    ):
+        return {"message": "Administrator access granted"}
+
+    role_client = TestClient(role_test_app)
+
+    response = role_client.get(
+        "/admin-only",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403

@@ -315,14 +315,15 @@ Status: Completed
 
 * Case API tests: 7 passed.
 * Image upload tests: 8 passed.
-* User API tests: 6 passed.
+* User API tests: 8 passed.
+* Role API tests: 5 passed.
 * Database tests: 1 passed.
-* Total tests: 22 passed.
+* Total tests: 29 passed.
 * Failed tests: 0.
 
 ### Current Limitations
 
-* Role-based authorization and role provisioning are pending.
+* Role-based authorization (RBAC), default Patient assignment, and Administrator role provisioning are completed.
 * Refresh token and logout/revocation mechanisms are pending.
 * Image files are currently stored locally.
 * Model inference API integration is pending.
@@ -330,6 +331,6 @@ Status: Completed
 
 ### Conclusion
 
-JWT authentication and ownership-based authorization have been integrated into the DermAI FastAPI backend. User login, protected profile access, case ownership enforcement, and secure image upload workflows have been implemented and verified through 22 automated tests.
+JWT authentication, ownership-based authorization, and role-based access control (RBAC) have been integrated into the DermAI FastAPI backend. Public registration automatically assigns the Patient role, while only Administrators can assign additional roles. The first Administrator has been provisioned through a controlled database operation. These workflows have been verified through 29 automated tests.
 
 DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
