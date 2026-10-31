@@ -8,9 +8,11 @@ from PIL import Image, ImageOps
 from torchvision import transforms
 
 from ml.src.models.mobilenet import create_mobilenet_model
+from threading import Lock
 
 
 CLASS_NAMES = ["ACK", "BCC", "MEL", "NEV", "SCC", "SEK"]
+MODEL_EXECUTION_LOCK = Lock()
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
@@ -125,10 +127,11 @@ def predict_image(image_bytes: bytes) -> dict:
     input_tensor = preprocess_image(image_bytes).to(device)
 
     try:
-        with torch.inference_mode():
-            logits = model(input_tensor)
-            probabilities = torch.softmax(logits, dim=1)[0]
-            probabilities = probabilities.cpu()
+        with MODEL_EXECUTION_LOCK:
+            with torch.inference_mode():
+                logits = model(input_tensor)
+                probabilities = torch.softmax(logits, dim=1)[0]
+                probabilities = probabilities.cpu()
 
         if probabilities.numel() != len(CLASS_NAMES):
             raise InferenceError(

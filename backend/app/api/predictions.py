@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -24,6 +24,7 @@ from app.services.inference_service import (
     InferenceError,
     predict_image,
 )
+from app.services.gradcam_service import generate_gradcam
 
 
 router = APIRouter(
@@ -157,3 +158,67 @@ def create_prediction(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to save prediction.",
         )
+
+
+@router.post(
+    "/{image_id}/gradcam",
+    response_class=Response,
+    status_code=status.HTTP_200_OK,
+)
+def create_gradcam_visualization(
+    image_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    image_record = db.scalar(
+        select(ImageModel)
+        .join(Case, ImageModel.case_id == Case.case_id)
+        .where(
+            ImageModel.image_id == image_id,
+            Case.owner_id == current_user.user_id,
+        )
+    )
+
+    if image_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found.",
+        )
+
+    storage_root = STORAGE_DIR.resolve()
+    image_path = (storage_root / image_record.storage_key).resolve()
+
+    if not image_path.is_relative_to(storage_root):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image storage reference.",
+        )
+
+    try:
+        image_bytes = image_path.read_bytes()
+        validate_image(image_bytes)
+    except (OSError, ImageValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Stored image is unavailable or invalid.",
+        )
+
+    try:
+        visualization = generate_gradcam(image_bytes)
+    except InferenceError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Grad-CAM visualization is currently unavailable.",
+        )
+
+    return Response(
+        content=visualization,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "X-Research-Disclaimer": (
+                "Research visualization only; not a medical diagnosis."
+            ),
+        },
+    )

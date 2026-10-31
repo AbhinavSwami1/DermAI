@@ -525,3 +525,79 @@ W3.0 integrates the MobileNetV3-Small research baseline into the authenticated D
 The complete backend test suite passes with 48 tests and zero failures.
 
 DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+
+---
+
+# W3.1 — Grad-CAM Explainability API Integration
+
+### Explainability Integration
+
+- Integrated the existing Grad-CAM implementation into the backend.
+- Reused the trained MobileNetV3-Small baseline checkpoint.
+- Target convolutional layer: `model.features[-1]`.
+- Implemented gradient-based class activation heatmap generation.
+- Applied ReLU and min-max normalization to the activation map.
+- Resized the heatmap to match the original image dimensions.
+- Generated colored overlays using the JET colormap with 45% opacity.
+- Added EXIF orientation correction for uploaded images.
+- Implemented hook cleanup and model gradient cleanup.
+- Added a shared execution lock to synchronize normal prediction and Grad-CAM operations on the cached model.
+
+### Grad-CAM API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/v1/predictions/{image_id}/gradcam` | Generate a Grad-CAM visualization for an uploaded image |
+
+- Requires authentication.
+- Verifies image ownership before visualization.
+- Validates stored images before processing.
+- Returns the visualization as a PNG response.
+- Uses `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+- Does not create duplicate prediction records.
+- Does not permanently store generated visualizations.
+- Includes a research-only disclaimer in the response headers.
+
+### Implementation Files
+
+- `backend/app/services/gradcam_service.py`
+- `backend/app/api/predictions.py`
+- `backend/tests/test_predictions.py`
+- Existing implementation: `ml/src/explainability/gradcam.py`
+
+### Dependencies
+
+- NumPy 2.4.6
+- Matplotlib 3.11.2
+- Pillow
+
+### Automated Testing
+
+- Grad-CAM PNG response generation: passed.
+- PNG content type and response headers: passed.
+- Authentication enforcement: passed.
+- Image ownership protection: passed.
+- Non-existent image rejection: passed.
+- Grad-CAM generation failure handling (HTTP 503): passed.
+- Storage path traversal protection: passed.
+- Full backend regression suite: **54 passed, 0 failed**.
+
+Two non-blocking deprecation warnings remain in the test environment.
+
+### Research Limitations
+
+- Grad-CAM visualizations represent model activation patterns, not verified lesion boundaries.
+- Heatmaps do not establish the model's clinical reasoning or diagnostic correctness.
+- Visualizations generated from synthetic images are pipeline tests, not meaningful medical results.
+- Clinical validity, diagnostic safety, and generalization remain unestablished.
+- Further evaluation is required before any clinical application.
+
+### Conclusion
+
+W3.1 integrates Grad-CAM explainability into the authenticated DermAI backend through a dedicated visualization API.
+
+The implementation reuses the trained MobileNetV3-Small baseline and returns PNG overlays without modifying the existing prediction workflow.
+
+The complete backend test suite passes with 54 tests and zero failures.
+
+DermAI remains an academic research prototype and is not a clinically validated diagnostic system.

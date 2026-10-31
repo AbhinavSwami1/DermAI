@@ -212,3 +212,115 @@ def test_prediction_blocks_path_traversal(
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid image storage reference."
+
+
+def test_gradcam_successful_png_response(
+    client, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+
+    expected_png = b"\x89PNG\r\n\x1a\nfake-gradcam-image"
+    monkeypatch.setattr(
+        predictions, "generate_gradcam", lambda image: expected_png
+    )
+
+    case_id, headers = create_test_case(client)
+    image_id = upload_test_image(client, case_id, headers)
+
+    response = client.post(
+        f"/api/v1/predictions/{image_id}/gradcam",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.content == expected_png
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["cache-control"] == "no-store"
+    assert "not a medical diagnosis" in response.headers[
+        "x-research-disclaimer"
+    ]
+
+
+def test_gradcam_without_token_rejected(client):
+    response = client.post(
+        f"/api/v1/predictions/{uuid4()}/gradcam"
+    )
+
+    assert response.status_code == 401
+
+
+def test_gradcam_for_another_users_image_rejected(
+    client, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+
+    case_id, owner_headers = create_test_case(client)
+    image_id = upload_test_image(client, case_id, owner_headers)
+
+    _, other_headers = create_test_case(client)
+
+    response = client.post(
+        f"/api/v1/predictions/{image_id}/gradcam",
+        headers=other_headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_gradcam_for_nonexistent_image_rejected(client):
+    _, headers = create_test_case(client)
+
+    response = client.post(
+        f"/api/v1/predictions/{uuid4()}/gradcam",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_gradcam_generation_failure_returns_503(
+    client, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+
+    def failed_gradcam(image_bytes):
+        raise predictions.InferenceError("Grad-CAM unavailable")
+
+    monkeypatch.setattr(
+        predictions, "generate_gradcam", failed_gradcam
+    )
+
+    case_id, headers = create_test_case(client)
+    image_id = upload_test_image(client, case_id, headers)
+
+    response = client.post(
+        f"/api/v1/predictions/{image_id}/gradcam",
+        headers=headers,
+    )
+
+    assert response.status_code == 503
+
+
+def test_gradcam_blocks_path_traversal(
+    client, db_session, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+
+    case_id, headers = create_test_case(client)
+    image_id = upload_test_image(client, case_id, headers)
+
+    image_record = db_session.get(ImageModel, UUID(image_id))
+    image_record.storage_key = "../outside.png"
+    db_session.flush()
+
+    response = client.post(
+        f"/api/v1/predictions/{image_id}/gradcam",
+        headers=headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid image storage reference."
