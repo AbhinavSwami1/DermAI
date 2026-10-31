@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base, engine, get_db
 from app.main import app
 from app import models as app_models
+from app.core.rate_limit import limiter
 
 # Use a separate PostgreSQL database for testing.
 TEST_DATABASE_URL = engine.url.set(database="derm_ai_test_db")
@@ -58,3 +59,9 @@ def client(db_session):
         yield test_client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    limiter.reset()
+    yield
+    limiter.reset()

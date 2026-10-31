@@ -334,3 +334,54 @@ Status: Completed
 JWT authentication, ownership-based authorization, and role-based access control (RBAC) have been integrated into the DermAI FastAPI backend. Public registration automatically assigns the Patient role, while only Administrators can assign additional roles. The first Administrator has been provisioned through a controlled database operation. These workflows have been verified through 29 automated tests.
 
 DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+
+
+W2.8 — Login Rate Limiting
+
+Status: Completed
+
+Implemented Features
+
+* Integrated SlowAPI for API rate limiting.
+* Configured login endpoint to allow a maximum of 5 attempts per minute per client IP.
+* Requests exceeding the configured limit receive HTTP 429 (Too Many Requests).
+* Configured rate-limit exception handling in the FastAPI application.
+* Enabled rate-limit response headers.
+* Used direct client IP identification without trusting forwarded IP headers by default.
+* Added automated login rate-limit security testing.
+* Added rate-limiter reset fixtures to maintain test isolation.
+
+Security Configuration
+
+Setting	Configuration
+Protected endpoint	POST /api/v1/auth/login
+Maximum attempts	5
+Time window	1 minute
+Rate-limit library	SlowAPI 0.1.10
+Exceeded limit response	HTTP 429
+Client identification	Direct IP address
+
+Automated Testing
+
+* Login rate-limit security test: 1 passed.
+* Case API tests: 7 passed.
+* Image upload tests: 8 passed.
+* User API tests: 8 passed.
+* Role API tests: 5 passed.
+* Database tests: 1 passed.
+* Total automated tests: 30 passed.
+* Failed tests: 0.
+
+Current Limitations
+
+* Rate-limit storage is currently process-local. Redis-backed shared storage should be configured before deploying across multiple workers or servers.
+* Refresh token and logout/revocation mechanisms are pending.
+* Image files are currently stored locally.
+* Model inference API integration is pending.
+* Additional production security hardening is required.
+
+Conclusion
+
+Login rate limiting has been integrated into the DermAI FastAPI backend using SlowAPI. The login endpoint limits clients to five attempts per minute and rejects excess requests with HTTP 429. The complete backend test suite passes all 30 automated tests.
+
+DermAI remains an academic research prototype and is not a clinically validated diagnostic system.

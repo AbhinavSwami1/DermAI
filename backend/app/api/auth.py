@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.security import verify_password
 from app.core.auth import create_access_token
+from app.core.database import get_db
+from app.core.rate_limit import limiter
+from app.core.security import verify_password
 from app.models import User
 from app.schemas import LoginRequest, TokenResponse
 
@@ -12,7 +13,10 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 def login(
+    request: Request,
+    response: Response,
     credentials: LoginRequest,
     db: Session = Depends(get_db),
 ):
