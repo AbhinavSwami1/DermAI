@@ -1,11 +1,11 @@
 from io import BytesIO
-from uuid import uuid4
-from uuid import UUID
+from uuid import uuid4, UUID
 
 from PIL import Image
 
 from app.api import upload
 from app.models import Image as ImageModel
+
 
 def create_image(image_format="PNG", size=(512, 512)):
     buffer = BytesIO()
@@ -14,10 +14,12 @@ def create_image(image_format="PNG", size=(512, 512)):
 
 
 def create_test_case(client):
+    email = f"{uuid4().hex}@dermai.com"
+
     user_response = client.post(
         "/api/v1/users/register",
         json={
-            "email": f"{uuid4().hex}@dermai.com",
+            "email": email,
             "password": "SecurePass@123",
             "full_name": "Upload Test User",
         },
@@ -25,21 +27,37 @@ def create_test_case(client):
 
     assert user_response.status_code == 201
 
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": "SecurePass@123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    headers = {
+        "Authorization": f"Bearer {login_response.json()['access_token']}"
+    }
+
     case_response = client.post(
         "/api/v1/cases",
-        json={"owner_id": user_response.json()["user_id"]},
+        headers=headers,
     )
 
     assert case_response.status_code == 201
-    return case_response.json()["case_id"]
+
+    return case_response.json()["case_id"], headers
 
 
 def test_valid_png_upload(client, db_session, tmp_path, monkeypatch):
     monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
-    case_id = create_test_case(client)
+    case_id, headers = create_test_case(client)
 
     response = client.post(
         "/api/v1/upload",
+        headers=headers,
         data={"case_id": case_id},
         files={"file": ("test.png", create_image(), "image/png")},
     )
@@ -52,6 +70,7 @@ def test_valid_png_upload(client, db_session, tmp_path, monkeypatch):
     assert data["width"] == 512
     assert data["height"] == 512
     assert (tmp_path / data["storage_key"]).exists()
+
     saved_image = db_session.get(ImageModel, data["image_id"])
 
     assert saved_image is not None
@@ -62,10 +81,11 @@ def test_valid_png_upload(client, db_session, tmp_path, monkeypatch):
 
 def test_valid_jpeg_upload(client, tmp_path, monkeypatch):
     monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
-    case_id = create_test_case(client)
+    case_id, headers = create_test_case(client)
 
     response = client.post(
         "/api/v1/upload",
+        headers=headers,
         data={"case_id": case_id},
         files={
             "file": (
@@ -81,10 +101,11 @@ def test_valid_jpeg_upload(client, tmp_path, monkeypatch):
 
 
 def test_corrupted_image_rejected(client):
-    case_id = create_test_case(client)
+    case_id, headers = create_test_case(client)
 
     response = client.post(
         "/api/v1/upload",
+        headers=headers,
         data={"case_id": case_id},
         files={"file": ("broken.jpg", b"not an image", "image/jpeg")},
     )
@@ -93,10 +114,11 @@ def test_corrupted_image_rejected(client):
 
 
 def test_unsupported_gif_rejected(client):
-    case_id = create_test_case(client)
+    case_id, headers = create_test_case(client)
 
     response = client.post(
         "/api/v1/upload",
+        headers=headers,
         data={"case_id": case_id},
         files={
             "file": (
@@ -111,10 +133,11 @@ def test_unsupported_gif_rejected(client):
 
 
 def test_small_image_rejected(client):
-    case_id = create_test_case(client)
+    case_id, headers = create_test_case(client)
 
     response = client.post(
         "/api/v1/upload",
+        headers=headers,
         data={"case_id": case_id},
         files={
             "file": (
@@ -129,10 +152,11 @@ def test_small_image_rejected(client):
 
 
 def test_oversized_file_rejected(client):
-    case_id = create_test_case(client)
+    case_id, headers = create_test_case(client)
 
     response = client.post(
         "/api/v1/upload",
+        headers=headers,
         data={"case_id": case_id},
         files={
             "file": (
@@ -144,3 +168,27 @@ def test_oversized_file_rejected(client):
     )
 
     assert response.status_code == 400
+
+
+def test_upload_without_token_rejected(client):
+    response = client.post(
+        "/api/v1/upload",
+        data={"case_id": str(uuid4())},
+        files={"file": ("test.png", create_image(), "image/png")},
+    )
+
+    assert response.status_code == 401
+
+
+def test_upload_to_another_users_case_rejected(client):
+    case_id, _ = create_test_case(client)
+    _, other_headers = create_test_case(client)
+
+    response = client.post(
+        "/api/v1/upload",
+        headers=other_headers,
+        data={"case_id": case_id},
+        files={"file": ("test.png", create_image(), "image/png")},
+    )
+
+    assert response.status_code == 404

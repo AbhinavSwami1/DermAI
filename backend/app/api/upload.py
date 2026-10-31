@@ -17,6 +17,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Case, Image as ImageModel
 from app.schemas import ImageResponse
+from app.core.auth import get_current_user
+from app.models import User
+
 from app.services.image_validation import (
     validate_image,
     ImageValidationError,
@@ -37,13 +40,17 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 async def upload_image(
     case_id: UUID = Form(...),
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     storage_path = None
 
     try:
         existing_case = db.scalar(
-            select(Case).where(Case.case_id == case_id)
+            select(Case).where(
+                Case.case_id == case_id,
+                Case.owner_id == current_user.user_id,
+            )
         )
 
         if not existing_case:

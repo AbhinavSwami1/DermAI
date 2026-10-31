@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.api.upload import router as upload_router
 from app.api.users import router as users_router
 from app.api.cases import router as cases_router
+from app.api.auth import router as auth_router
 app = FastAPI(
     title="DermAI API",
     description="Backend API for the DermAI skin lesion analysis system.",
@@ -29,3 +30,4 @@ def health_check():
 app.include_router(upload_router)
 app.include_router(users_router)
 app.include_router(cases_router)
+app.include_router(auth_router)

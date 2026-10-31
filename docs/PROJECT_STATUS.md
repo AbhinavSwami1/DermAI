@@ -264,3 +264,72 @@ Testing
 * Failed: 0
 
 Security limitation: Authentication, authorization, and ownership enforcement are still pending. Current case endpoints are development-stage APIs and are not production-ready for access control.
+
+## W2.6 — JWT Authentication and Authorization
+
+Status: Completed
+
+### Implemented Features
+
+* JWT-based access token generation using PyJWT.
+* Configurable JWT secret, algorithm, and token expiration.
+* User login API with email and password verification.
+* Argon2 password hash verification.
+* HTTP Bearer token authentication.
+* Current authenticated user dependency.
+* Protected user profile endpoint.
+* Case ownership enforcement.
+* Authenticated case creation.
+* Prevention of cross-user case access.
+* Protected image upload endpoint.
+* Prevention of image uploads to another user's case.
+* Authentication and authorization test coverage.
+
+### Authentication API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | /api/v1/auth/login | Authenticate user and generate JWT |
+| GET | /api/v1/users/me | Retrieve authenticated user profile |
+
+### Authorization
+
+* Unauthenticated requests to protected endpoints are rejected.
+* Users can create cases only for themselves.
+* Users can retrieve only their own cases.
+* Users cannot access another user's cases.
+* Image uploads require authentication.
+* Images can only be uploaded to cases owned by the authenticated user.
+* Invalid or expired tokens are rejected.
+
+### Security Measures
+
+* Argon2 password hashing.
+* JWT access tokens using HS256.
+* Configurable 30-minute access token expiration.
+* JWT secret stored in backend/.env.
+* Environment template contains only a placeholder secret.
+* Password hashes are excluded from API responses.
+
+### Automated Testing
+
+* Case API tests: 7 passed.
+* Image upload tests: 8 passed.
+* User API tests: 6 passed.
+* Database tests: 1 passed.
+* Total tests: 22 passed.
+* Failed tests: 0.
+
+### Current Limitations
+
+* Role-based authorization and role provisioning are pending.
+* Refresh token and logout/revocation mechanisms are pending.
+* Image files are currently stored locally.
+* Model inference API integration is pending.
+* Additional production security hardening is required.
+
+### Conclusion
+
+JWT authentication and ownership-based authorization have been integrated into the DermAI FastAPI backend. User login, protected profile access, case ownership enforcement, and secure image upload workflows have been implemented and verified through 22 automated tests.
+
+DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
