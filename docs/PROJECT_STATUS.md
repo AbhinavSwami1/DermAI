@@ -232,3 +232,35 @@ Conclusion
 The PostgreSQL database foundation has been implemented using SQLAlchemy and Alembic. Seven database tables, their primary and foreign-key relationships, and environment-based database configuration have been successfully established and verified.
 
 DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+
+W2.5 — FastAPI and PostgreSQL CRUD Integration
+
+Status: Completed
+
+Implemented:
+
+* PostgreSQL database session dependency using SQLAlchemy.
+* User registration API with Argon2 password hashing.
+* Pydantic request and response schemas.
+* Case creation and retrieval APIs.
+* Image upload integrated with PostgreSQL metadata persistence.
+* Image-to-case foreign key relationship.
+* Image validation and local file storage.
+* Isolated PostgreSQL test database for automated testing.
+
+API Endpoints
+
+Method	Endpoint	Purpose
+POST	/api/v1/users/register	Register user
+POST	/api/v1/cases	Create case
+GET	/api/v1/users/{owner_id}/cases	Retrieve user cases
+GET	/api/v1/cases/{case_id}	Retrieve individual case
+POST	/api/v1/upload	Upload image and save metadata
+
+Testing
+
+* Total automated tests: 15
+* Passed: 15
+* Failed: 0
+
+Security limitation: Authentication, authorization, and ownership enforcement are still pending. Current case endpoints are development-stage APIs and are not production-ready for access control.
