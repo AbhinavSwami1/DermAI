@@ -10,11 +10,22 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.rate_limit import limiter
 from app.api.predictions import router as predictions_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="DermAI API",
     description="Backend API for the DermAI skin lesion analysis system.",
     version="1.0.0",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 app.state.limiter = limiter
 app.add_exception_handler(
