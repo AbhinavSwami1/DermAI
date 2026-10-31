@@ -452,3 +452,76 @@ The DermAI backend now supports refresh token generation, hashed database storag
 All 38 backend automated tests pass.
 
 DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+
+---
+
+# W3.0 — Deep Learning Model Inference API Integration
+
+### Model Integration
+
+- Integrated the trained MobileNetV3-Small baseline checkpoint.
+- Checkpoint: `ml/checkpoints/mobilenet/best_mobilenet_v3_small.pth`.
+- Implemented lazy model loading and inference-device selection (CUDA, Apple MPS, or CPU).
+- Added RGB image preprocessing and resizing to 224×224.
+- Applied ImageNet normalization.
+- Added six-class probability generation using softmax.
+
+### Class Mapping
+
+| Index | Class |
+|---|---|
+| 0 | ACK |
+| 1 | BCC |
+| 2 | MEL |
+| 3 | NEV |
+| 4 | SCC |
+| 5 | SEK |
+
+### Prediction API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/v1/predictions/{image_id}` | Generate and save a prediction for an uploaded image |
+
+- Requires authentication.
+- Verifies image ownership before inference.
+- Validates the stored image before processing.
+- Saves prediction results and class scores in PostgreSQL.
+- Associates predictions with a registered model version.
+- Returns predicted class, confidence, class scores, model metadata, and timestamp.
+- Includes a research-only disclaimer.
+
+### Dependencies
+
+- PyTorch 2.15.0
+- Torchvision 0.29.2
+
+### Automated Testing
+
+- Inference preprocessing: passed.
+- Six-class probability output: passed.
+- Empty and corrupted image rejection: passed.
+- Prediction generation and database persistence: passed.
+- Authentication enforcement: passed.
+- Image ownership protection: passed.
+- Non-existent image rejection: passed.
+- Inference failure handling (HTTP 503): passed.
+- Storage path traversal protection: passed.
+- Complete backend regression suite: **48 passed, 0 failed**.
+
+Two non-blocking deprecation warnings remain in the test environment.
+
+### Research Limitations
+
+- Predictions are experimental model outputs, not confirmed diagnoses.
+- The model was evaluated on the PAD-UFES-20 dataset; generalization to other populations and image sources is not established.
+- The prediction API does not establish clinical validity or diagnostic safety.
+- Production deployment requires further security, performance, and deployment validation.
+
+### Conclusion
+
+W3.0 integrates the MobileNetV3-Small research baseline into the authenticated DermAI backend, with image preprocessing, six-class inference, database persistence, and model-version tracking.
+
+The complete backend test suite passes with 48 tests and zero failures.
+
+DermAI remains an academic research prototype and is not a clinically validated diagnostic system.

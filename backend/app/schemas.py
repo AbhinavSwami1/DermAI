@@ -90,3 +90,21 @@ class RoleResponse(BaseModel):
 class UserRoleResponse(BaseModel):
     user_id: UUID
     roles: list[str]
+
+# -------------------------
+# PREDICTION SCHEMAS
+# -------------------------
+
+class PredictionResponse(BaseModel):
+    prediction_id: UUID
+    image_id: UUID
+    model_version_id: UUID
+    model_name: str
+    model_version: str
+    architecture: str
+    predicted_label: str
+    confidence: float
+    class_scores: dict[str, float]
+    status: str
+    created_at: datetime
+    disclaimer: str
