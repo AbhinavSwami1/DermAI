@@ -4,8 +4,10 @@ from uuid import uuid4, UUID
 from PIL import Image
 
 from app.api import upload
-from app.models import Image as ImageModel
-
+from app.models import (
+    Image as ImageModel,
+    ImageQualityAssessment,
+)
 
 def create_image(image_format="PNG", size=(512, 512)):
     buffer = BytesIO()
@@ -192,3 +194,33 @@ def test_upload_to_another_users_case_rejected(client):
     )
 
     assert response.status_code == 404
+
+def test_upload_saves_image_quality_assessment(
+    client, db_session, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    case_id, headers = create_test_case(client)
+
+    response = client.post(
+        "/api/v1/upload",
+        headers=headers,
+        data={"case_id": case_id},
+        files={"file": ("quality_test.png", create_image(), "image/png")},
+    )
+
+    assert response.status_code == 201
+
+    image_id = UUID(response.json()["image_id"])
+
+    assessment = db_session.query(ImageQualityAssessment).filter_by(
+        image_id=image_id
+    ).one()
+
+    assert assessment.image_id == image_id
+    assert assessment.blur_score >= 0
+    assert 0 <= assessment.brightness_mean <= 255
+    assert 0 <= assessment.dark_pixel_percentage <= 100
+    assert 0 <= assessment.bright_pixel_percentage <= 100
+    assert assessment.quality_status == "REVIEW_REQUIRED"
+    assert "POSSIBLY_BLURRY" in assessment.quality_flags
+    assert assessment.algorithm_version == "1.0.0"

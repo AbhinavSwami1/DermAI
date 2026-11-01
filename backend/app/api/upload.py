@@ -15,15 +15,25 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Case, Image as ImageModel
+from app.models import (
+    Case,
+    Image as ImageModel,
+    ImageQualityAssessment,
+)
+
 from app.schemas import ImageResponse
 from app.core.auth import get_current_user
 from app.models import User
+
 
 from app.services.image_validation import (
     validate_image,
     ImageValidationError,
     MAX_FILE_SIZE,
+)
+from app.services.image_quality_service import (
+    assess_image_quality,
+    ImageQualityError,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["Image Upload"])
@@ -62,6 +72,8 @@ async def upload_image(
         image_bytes = await file.read(MAX_FILE_SIZE + 1)
         metadata = validate_image(image_bytes)
 
+        quality = assess_image_quality(image_bytes)
+
         image_id = uuid4()
         extension = ".jpg" if metadata["format"] == "JPEG" else ".png"
         storage_filename = f"{image_id}{extension}"
@@ -80,13 +92,31 @@ async def upload_image(
             height=metadata["height"],
         )
 
+        quality_assessment = ImageQualityAssessment(
+            image_id=image_id,
+            blur_score=quality["blur_score"],
+            brightness_mean=quality["brightness_mean"],
+            dark_pixel_percentage=quality["dark_pixel_percentage"],
+            bright_pixel_percentage=quality["bright_pixel_percentage"],
+            quality_status=quality["quality_status"],
+            quality_flags=quality["quality_flags"],
+            algorithm_version=quality["algorithm_version"],
+        )
+
         db.add(new_image)
+        db.add(quality_assessment)
         db.commit()
         db.refresh(new_image)
 
         return new_image
 
     except ImageValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+    except ImageQualityError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),

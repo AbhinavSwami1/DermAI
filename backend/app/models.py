@@ -317,3 +317,65 @@ class RefreshToken(Base):
         ForeignKey("refresh_tokens.token_id"),
         nullable=True,
     )
+
+# -------------------------
+# IMAGE QUALITY ASSESSMENTS
+# -------------------------
+
+class ImageQualityAssessment(Base):
+    __tablename__ = "image_quality_assessments"
+
+    assessment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    image_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("images.image_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    blur_score: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    brightness_mean: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    dark_pixel_percentage: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    bright_pixel_percentage: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    quality_status: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+    )
+
+    quality_flags: Mapped[list] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+    )
+
+    algorithm_version: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+    )
+
+    assessed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
