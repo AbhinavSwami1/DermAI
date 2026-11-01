@@ -1,5 +1,6 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001/api/v1";
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://127.0.0.1:8001/api/v1";
 
 let accessToken: string | null = null;
 
@@ -11,6 +12,7 @@ export function getAccessToken() {
   return accessToken;
 }
 
+// Restore access token using refresh cookie
 export async function refreshAccessToken(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -24,15 +26,46 @@ export async function refreshAccessToken(): Promise<boolean> {
     }
 
     const data: { access_token: string } = await response.json();
+
+    if (!data.access_token) {
+      setAccessToken(null);
+      return false;
+    }
+
     setAccessToken(data.access_token);
 
     return true;
-  } catch {
+  } catch (error) {
+    console.error("Token refresh failed:", error);
     setAccessToken(null);
     return false;
   }
 }
 
+// Extract readable API error messages
+async function getErrorMessage(response: Response): Promise<string> {
+  const errorBody = await response.json().catch(() => null);
+
+  const detail = errorBody?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => item.msg || JSON.stringify(item))
+      .join(", ");
+  }
+
+  if (detail && typeof detail === "object") {
+    return detail.message || JSON.stringify(detail);
+  }
+
+  return `API request failed (${response.status})`;
+}
+
+// Standard API request
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -58,10 +91,7 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    const message =
-      errorBody?.detail || `API request failed (${response.status})`;
-
+    const message = await getErrorMessage(response);
     throw new Error(message);
   }
 
@@ -72,6 +102,7 @@ export async function apiRequest<T>(
   return response.json() as Promise<T>;
 }
 
+// API request for binary responses such as Grad-CAM images
 export async function apiRequestBlob(endpoint: string): Promise<Blob> {
   const headers = new Headers();
 
@@ -86,10 +117,8 @@ export async function apiRequestBlob(endpoint: string): Promise<Blob> {
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(
-      errorBody?.detail || `API request failed (${response.status})`,
-    );
+    const message = await getErrorMessage(response);
+    throw new Error(message);
   }
 
   return response.blob();
