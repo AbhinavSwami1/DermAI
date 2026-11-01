@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models import (
     Case,
     Image as ImageModel,
+    ImageQualityAssessment,
     ModelVersion,
     Prediction,
     User,
@@ -41,6 +42,7 @@ STORAGE_DIR = (
 MODEL_NAME = "DermAI MobileNetV3-Small Baseline"
 MODEL_VERSION = "1.0.0-epoch20"
 MODEL_ARCHITECTURE = "MobileNetV3-Small"
+
 CHECKPOINT_REFERENCE = (
     "ml/checkpoints/mobilenet/best_mobilenet_v3_small.pth"
 )
@@ -50,17 +52,19 @@ DISCLAIMER = (
     "medical diagnosis and must not be used for clinical decisions."
 )
 
-
-@router.post(
-    "/{image_id}",
-    response_model=PredictionResponse,
-    status_code=status.HTTP_201_CREATED,
+QUALITY_DISCLAIMER = (
+    "Image quality assessment uses preliminary research heuristics. "
+    "It is not clinically validated."
 )
-def create_prediction(
+
+
+def get_owned_image(
     image_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: User,
+    db: Session,
 ):
+    """Retrieve an image only if it belongs to the authenticated user."""
+
     image_record = db.scalar(
         select(ImageModel)
         .join(Case, ImageModel.case_id == Case.case_id)
@@ -76,6 +80,61 @@ def create_prediction(
             detail="Image not found.",
         )
 
+    return image_record
+
+
+def get_acceptable_quality_assessment(
+    image_id: UUID,
+    db: Session,
+):
+    """Require an acceptable quality assessment before AI processing."""
+
+    assessment = db.scalar(
+        select(ImageQualityAssessment)
+        .where(
+            ImageQualityAssessment.image_id == image_id,
+        )
+        .order_by(
+            ImageQualityAssessment.assessed_at.desc(),
+            ImageQualityAssessment.assessment_id.desc(),
+        )
+    )
+
+    if assessment is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "QUALITY_ASSESSMENT_MISSING",
+                "message": (
+                    "Image quality assessment is unavailable. "
+                    "Please upload the image again."
+                ),
+            },
+        )
+
+    if assessment.quality_status != "ACCEPTABLE":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "IMAGE_REVIEW_REQUIRED",
+                "message": (
+                    "This image requires quality review before "
+                    "prediction. Please replace it with a clearer "
+                    "image or review the quality warnings."
+                ),
+                "quality_status": assessment.quality_status,
+                "quality_flags": assessment.quality_flags,
+                "algorithm_version": assessment.algorithm_version,
+                "disclaimer": QUALITY_DISCLAIMER,
+            },
+        )
+
+    return assessment
+
+
+def get_safe_image_bytes(image_record: ImageModel) -> bytes:
+    """Read and validate an image stored inside the configured storage."""
+
     storage_root = STORAGE_DIR.resolve()
     image_path = (storage_root / image_record.storage_key).resolve()
 
@@ -88,14 +147,43 @@ def create_prediction(
     try:
         image_bytes = image_path.read_bytes()
         validate_image(image_bytes)
+
     except (OSError, ImageValidationError):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Stored image is unavailable or invalid.",
         )
 
+    return image_bytes
+
+
+@router.post(
+    "/{image_id}",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_prediction(
+    image_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    image_record = get_owned_image(
+        image_id,
+        current_user,
+        db,
+    )
+
+    # Quality gate: stop before running model inference.
+    get_acceptable_quality_assessment(
+        image_record.image_id,
+        db,
+    )
+
+    image_bytes = get_safe_image_bytes(image_record)
+
     try:
         inference_result = predict_image(image_bytes)
+
     except InferenceError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -119,6 +207,7 @@ def create_prediction(
                 architecture=MODEL_ARCHITECTURE,
                 checkpoint_reference=CHECKPOINT_REFERENCE,
             )
+
             db.add(model_version)
             db.flush()
 
@@ -154,6 +243,7 @@ def create_prediction(
 
     except SQLAlchemyError:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to save prediction.",
@@ -170,41 +260,23 @@ def create_gradcam_visualization(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    image_record = db.scalar(
-        select(ImageModel)
-        .join(Case, ImageModel.case_id == Case.case_id)
-        .where(
-            ImageModel.image_id == image_id,
-            Case.owner_id == current_user.user_id,
-        )
+    image_record = get_owned_image(
+        image_id,
+        current_user,
+        db,
     )
 
-    if image_record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found.",
-        )
+    # Apply the same quality gate to Grad-CAM.
+    get_acceptable_quality_assessment(
+        image_record.image_id,
+        db,
+    )
 
-    storage_root = STORAGE_DIR.resolve()
-    image_path = (storage_root / image_record.storage_key).resolve()
-
-    if not image_path.is_relative_to(storage_root):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image storage reference.",
-        )
-
-    try:
-        image_bytes = image_path.read_bytes()
-        validate_image(image_bytes)
-    except (OSError, ImageValidationError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Stored image is unavailable or invalid.",
-        )
+    image_bytes = get_safe_image_bytes(image_record)
 
     try:
         visualization = generate_gradcam(image_bytes)
+
     except InferenceError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
