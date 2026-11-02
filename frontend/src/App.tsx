@@ -66,9 +66,9 @@ const researchStats = [
     icon: FileImage,
   },
   {
-    label: "Model Accuracy",
-    value: "55.0%",
-    change: "Baseline test accuracy",
+    label: "Test Accuracy",
+    value: "57.39%",
+    change: "Held-out test set (460 images)",
     icon: BrainCircuit,
   },
   {
@@ -79,8 +79,8 @@ const researchStats = [
   },
   {
     label: "Model Version",
-    value: "1.0.0",
-    change: "MobileNetV3-Small",
+    value: "Epoch 9",
+    change: "MobileNetV3-Large Fine-tuned",
     icon: FlaskConical,
   },
 ];
@@ -105,6 +105,7 @@ function App() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [gradcamError, setGradcamError] = useState("");
 
   const [prediction, setPrediction] = useState<any>(null);
   const [imageQuality, setImageQuality] =
@@ -191,86 +192,100 @@ function App() {
     setPreviewUrl(URL.createObjectURL(file));
 
     setPrediction(null);
-    setGradcamUrl(null);
-    setImageQuality(null);
-    setUploadError("");
+setGradcamUrl(null);
+setImageQuality(null);
+setUploadError("");
+setGradcamError("");
 
     event.target.value = "";
   }
 
   // Complete image analysis workflow
-  async function handleAnalyze() {
-    if (!selectedFile || processing) return;
+  // Complete image analysis workflow
+async function handleAnalyze() {
+  if (!selectedFile || processing) return;
 
-    setProcessing(true);
-    setUploadError("");
-    setPrediction(null);
-    setImageQuality(null);
+  setProcessing(true);
+  setUploadError("");
+  setGradcamError("");
+  setPrediction(null);
+  setImageQuality(null);
 
-    if (gradcamUrl) {
-      URL.revokeObjectURL(gradcamUrl);
-      setGradcamUrl(null);
-    }
+  if (gradcamUrl) {
+    URL.revokeObjectURL(gradcamUrl);
+    setGradcamUrl(null);
+  }
 
+  try {
+    // Step 1: Create research case
+    const newCase = await apiRequest<{ case_id: string }>("/cases", {
+      method: "POST",
+    });
+
+    // Step 2: Upload image
+    const formData = new FormData();
+    formData.append("case_id", newCase.case_id);
+    formData.append("file", selectedFile);
+
+    const uploadedImage = await apiRequest<{
+      image_id: string;
+      original_filename: string;
+    }>("/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    // Step 3: Fetch image quality assessment
+    const qualityResult = await apiRequest<ImageQuality>(
+      `/images/${uploadedImage.image_id}/quality`,
+    );
+
+    setImageQuality(qualityResult);
+
+    // Step 4: Run experimental prediction
+    const predictionResult = await apiRequest<{
+      prediction_id: string;
+      predicted_label: string;
+      confidence: number;
+      class_scores: Record<string, number>;
+      model_version: string;
+      status: string;
+      disclaimer: string;
+    }>(`/predictions/${uploadedImage.image_id}`, {
+      method: "POST",
+    });
+
+    // Preserve successful prediction independently
+    setPrediction(predictionResult);
+
+    // Step 5: Generate Grad-CAM independently
     try {
-      // Step 1: Create research case
-      const newCase = await apiRequest<{ case_id: string }>("/cases", {
-        method: "POST",
-      });
-
-      // Step 2: Upload image
-      const formData = new FormData();
-      formData.append("case_id", newCase.case_id);
-      formData.append("file", selectedFile);
-
-      const uploadedImage = await apiRequest<{
-        image_id: string;
-        original_filename: string;
-      }>("/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      // Step 3: Fetch image quality assessment
-      const qualityResult = await apiRequest<ImageQuality>(
-        `/images/${uploadedImage.image_id}/quality`,
-      );
-
-      setImageQuality(qualityResult);
-
-      // Step 4: Run experimental prediction
-      const predictionResult = await apiRequest<{
-        prediction_id: string;
-        predicted_label: string;
-        confidence: number;
-        class_scores: Record<string, number>;
-        model_version: string;
-        status: string;
-        disclaimer: string;
-      }>(`/predictions/${uploadedImage.image_id}`, {
-        method: "POST",
-      });
-
-      setPrediction(predictionResult);
-
-      // Step 5: Generate Grad-CAM visualization
       const gradcamBlob = await apiRequestBlob(
         `/predictions/${uploadedImage.image_id}/gradcam`,
       );
 
       setGradcamUrl(URL.createObjectURL(gradcamBlob));
     } catch (error) {
-      console.error("Image analysis failed:", error);
+      console.error("Grad-CAM generation failed:", error);
 
-      setUploadError(
+      setGradcamError(
         error instanceof Error
           ? error.message
-          : "Something went wrong during image analysis.",
+          : "Prediction succeeded, but Grad-CAM visualization could not be generated.",
       );
-    } finally {
-      setProcessing(false);
     }
+  } catch (error) {
+    console.error("Image analysis failed:", error);
+
+    setUploadError(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong during image analysis.",
+    );
+  } finally {
+    setProcessing(false);
   }
+}
 
   // Logout and revoke refresh token
   async function handleLogout() {
@@ -478,24 +493,186 @@ function App() {
           {activeView === "history" && <PredictionHistory />}
 
           {/* Research Insights */}
-          {activeView === "insights" && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-8">
-              <div className="flex items-center gap-3">
-                <ChartNoAxesCombined
-                  className="text-cyan-700"
-                  size={25}
-                />
-                <h2 className="text-xl font-bold text-slate-900">
-                  Research Insights
-                </h2>
+          {/* Research Insights */}
+{activeView === "insights" && (
+  <section className="space-y-6">
+    {/* Header */}
+    <div>
+      <div className="flex items-center gap-3">
+        <ChartNoAxesCombined className="text-cyan-700" size={27} />
+        <h2 className="text-2xl font-bold text-slate-900">
+          Research Insights
+        </h2>
+      </div>
+      <p className="mt-2 text-sm text-slate-500">
+        Experimental performance and dataset analysis of the DERMAI
+        research model.
+      </p>
+    </div>
+
+    {/* Model performance */}
+    <div>
+      <h3 className="mb-4 text-lg font-bold text-slate-900">
+        Model Performance
+      </h3>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            label: "Validation Accuracy",
+            value: "61.22%",
+            description: "Validation dataset",
+          },
+          {
+            label: "Test Accuracy",
+            value: "57.39%",
+            description: "Held-out test set · 460 images",
+          },
+          {
+            label: "Macro F1-Score",
+            value: "51.02%",
+            description: "Equal weight per class",
+          },
+          {
+            label: "Weighted F1-Score",
+            value: "60.12%",
+            description: "Weighted by class support",
+          },
+        ].map((metric) => (
+          <div
+            key={metric.label}
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <p className="text-sm font-medium text-slate-500">
+              {metric.label}
+            </p>
+            <p className="mt-3 text-3xl font-bold text-cyan-800">
+              {metric.value}
+            </p>
+            <p className="mt-2 text-xs text-slate-400">
+              {metric.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Dataset distribution */}
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6">
+        <h3 className="text-lg font-bold text-slate-900">
+          Dataset Class Distribution
+        </h3>
+        <p className="mt-1 text-sm text-slate-500">
+          PAD-UFES-20 · 2,298 images across six diagnostic classes
+        </p>
+      </div>
+
+      <div className="space-y-5">
+        {conditions.map((condition) => {
+          const percentage =
+            (condition.count / 2298) * 100;
+
+          return (
+            <div key={condition.code}>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-semibold text-slate-800">
+                    {condition.code}
+                  </span>
+                  <span className="ml-2 text-sm text-slate-500">
+                    {condition.name}
+                  </span>
+                </div>
+
+                <span className="text-sm font-semibold text-slate-700">
+                  {condition.count.toLocaleString()} ({percentage.toFixed(1)}%)
+                </span>
               </div>
 
-              <p className="mt-3 text-sm leading-6 text-slate-500">
-                The research insights dashboard is planned for a
-                later development phase.
-              </p>
-            </section>
-          )}
+              <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-cyan-600 transition-all"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-6 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+        The dataset has class imbalance. MEL has substantially fewer
+        samples than the other diagnostic classes, which may affect
+        model performance.
+      </p>
+    </div>
+
+    {/* Model configuration */}
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 className="text-lg font-bold text-slate-900">
+        Model Configuration
+      </h3>
+
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          ["Architecture", "MobileNetV3-Large"],
+          ["Training Strategy", "Fine-tuned Transfer Learning"],
+          ["Selected Checkpoint", "Epoch 9"],
+          ["Input Dimensions", "224 × 224 pixels"],
+          ["Normalization", "ImageNet Mean / Std"],
+          ["Output Classes", "6"],
+        ].map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-xl bg-slate-50 p-4"
+          >
+            <p className="text-xs font-medium text-slate-500">
+              {label}
+            </p>
+            <p className="mt-2 text-sm font-bold text-slate-800">
+              {value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Research limitations */}
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+      <h3 className="text-lg font-bold text-amber-900">
+        Research Limitations
+      </h3>
+
+      <ul className="mt-4 list-inside list-disc space-y-2 text-sm leading-6 text-amber-900">
+        <li>
+          The dataset contains an imbalanced distribution of diagnostic
+          classes.
+        </li>
+        <li>
+          MEL has only 52 images in the PAD-UFES-20 dataset.
+        </li>
+        <li>
+          Model performance is experimental and has not been clinically
+          validated.
+        </li>
+        <li>
+          Grad-CAM provides an attention visualization, not verified
+          lesion segmentation.
+        </li>
+        <li>
+          Predictions must not be used for medical diagnosis or
+          treatment decisions.
+        </li>
+      </ul>
+    </div>
+
+    <p className="text-center text-xs leading-5 text-slate-400">
+      DERMAI Research Prototype · Experimental results · Not for
+      clinical use
+    </p>
+  </section>
+)}
 
           {/* Dashboard */}
           {activeView === "dashboard" && (
@@ -806,6 +983,12 @@ function App() {
                             />
                           </div>
                         )}
+                        {gradcamError && (
+  <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+    Prediction completed successfully, but Grad-CAM visualization
+    is unavailable: {gradcamError}
+  </p>
+)}
 
                         <p className="mt-5 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
                           Research prototype output only. This
@@ -842,12 +1025,13 @@ function App() {
 
                   <div className="space-y-5">
                     {[
-                      ["Architecture", "MobileNetV3-Small"],
-                      ["Version", "1.0.0-epoch20"],
-                      ["Input Size", "224 × 224 pixels"],
-                      ["Classes", "6 skin conditions"],
-                      ["Device", "Auto-detected"],
-                    ].map(([key, value]) => (
+  ["Architecture", "MobileNetV3-Large"],
+  ["Version", "Fine-tuned Epoch 9"],
+  ["Input Size", "224 × 224 pixels"],
+  ["Classes", "6 skin conditions"],
+  ["Normalization", "ImageNet Mean / Std"],
+  ["Device", "Auto-detected"],
+].map(([key, value]) => (
                       <div
                         key={key}
                         className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3"

@@ -108,3 +108,34 @@ class PredictionResponse(BaseModel):
     status: str
     created_at: datetime
     disclaimer: str
+
+# -------------------------
+# PREDICTION HISTORY SCHEMAS
+# -------------------------
+
+class PredictionHistoryItem(BaseModel):
+    prediction_id: UUID
+    case_id: UUID
+    image_id: UUID
+    original_filename: str
+
+    predicted_label: str
+    confidence: float | None
+    class_scores: dict[str, float] | None
+    status: str
+
+    model_version_id: UUID
+    model_name: str
+    model_version: str
+    architecture: str
+
+    created_at: datetime
+
+
+class PredictionHistoryResponse(BaseModel):
+    items: list[PredictionHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    disclaimer: str

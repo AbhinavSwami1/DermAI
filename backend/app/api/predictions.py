@@ -1,8 +1,16 @@
+from math import ceil
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -16,7 +24,11 @@ from app.models import (
     Prediction,
     User,
 )
-from app.schemas import PredictionResponse
+from app.schemas import (
+    PredictionResponse,
+    PredictionHistoryItem,
+    PredictionHistoryResponse,
+)
 from app.services.image_validation import (
     ImageValidationError,
     validate_image,
@@ -39,12 +51,12 @@ STORAGE_DIR = (
     / "original"
 )
 
-MODEL_NAME = "DermAI MobileNetV3-Small Baseline"
-MODEL_VERSION = "1.0.0-epoch20"
-MODEL_ARCHITECTURE = "MobileNetV3-Small"
+MODEL_NAME = "DermAI MobileNetV3-Large Fine-tuned"
+MODEL_VERSION = "mobilenet_v3_large_finetuned_epoch9"
+MODEL_ARCHITECTURE = "MobileNetV3-Large"
 
 CHECKPOINT_REFERENCE = (
-    "ml/checkpoints/mobilenet/best_mobilenet_v3_small.pth"
+    "ml/checkpoints/mobilenet/best_mobilenet_v3_large_finetuned.pth"
 )
 
 DISCLAIMER = (
@@ -133,10 +145,12 @@ def get_acceptable_quality_assessment(
 
 
 def get_safe_image_bytes(image_record: ImageModel) -> bytes:
-    """Read and validate an image stored inside the configured storage."""
+    """Read and validate an image stored inside configured storage."""
 
     storage_root = STORAGE_DIR.resolve()
-    image_path = (storage_root / image_record.storage_key).resolve()
+    image_path = (
+        storage_root / image_record.storage_key
+    ).resolve()
 
     if not image_path.is_relative_to(storage_root):
         raise HTTPException(
@@ -157,6 +171,115 @@ def get_safe_image_bytes(image_record: ImageModel) -> bytes:
     return image_bytes
 
 
+# --------------------------------------------------
+# PREDICTION HISTORY
+# --------------------------------------------------
+
+@router.get(
+    "/history",
+    response_model=PredictionHistoryResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_prediction_history(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return paginated prediction history belonging to the
+    authenticated user only.
+    """
+
+    ownership_filter = (
+        select(Prediction.prediction_id)
+        .join(
+            ImageModel,
+            Prediction.image_id == ImageModel.image_id,
+        )
+        .join(
+            Case,
+            ImageModel.case_id == Case.case_id,
+        )
+        .where(
+            Case.owner_id == current_user.user_id,
+        )
+    )
+
+    total = db.scalar(
+        select(func.count()).select_from(
+            ownership_filter.subquery()
+        )
+    ) or 0
+
+    total_pages = ceil(total / page_size) if total else 0
+
+    history_query = (
+        select(
+            Prediction,
+            ImageModel,
+            Case,
+            ModelVersion,
+        )
+        .join(
+            ImageModel,
+            Prediction.image_id == ImageModel.image_id,
+        )
+        .join(
+            Case,
+            ImageModel.case_id == Case.case_id,
+        )
+        .join(
+            ModelVersion,
+            Prediction.model_version_id
+            == ModelVersion.model_version_id,
+        )
+        .where(
+            Case.owner_id == current_user.user_id,
+        )
+        .order_by(
+            Prediction.created_at.desc(),
+            Prediction.prediction_id.desc(),
+        )
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+
+    records = db.execute(history_query).all()
+
+    items = [
+        PredictionHistoryItem(
+            prediction_id=prediction.prediction_id,
+            case_id=case.case_id,
+            image_id=image.image_id,
+            original_filename=image.original_filename,
+            predicted_label=prediction.predicted_label,
+            confidence=prediction.confidence,
+            class_scores=prediction.class_scores,
+            status=prediction.status,
+            model_version_id=model.model_version_id,
+            model_name=model.model_name,
+            model_version=model.version,
+            architecture=model.architecture,
+            created_at=prediction.created_at,
+        )
+        for prediction, image, case, model in records
+    ]
+
+    return PredictionHistoryResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        disclaimer=DISCLAIMER,
+    )
+
+
+# --------------------------------------------------
+# CREATE PREDICTION
+# --------------------------------------------------
+
 @router.post(
     "/{image_id}",
     response_model=PredictionResponse,
@@ -173,13 +296,12 @@ def create_prediction(
         db,
     )
 
-    # Quality gate: stop before running model inference.
+    image_bytes = get_safe_image_bytes(image_record)
+
     get_acceptable_quality_assessment(
         image_record.image_id,
         db,
     )
-
-    image_bytes = get_safe_image_bytes(image_record)
 
     try:
         inference_result = predict_image(image_bytes)
@@ -223,6 +345,7 @@ def create_prediction(
 
         db.add(prediction)
         db.commit()
+
         db.refresh(prediction)
         db.refresh(model_version)
 
@@ -250,6 +373,10 @@ def create_prediction(
         )
 
 
+# --------------------------------------------------
+# GRAD-CAM
+# --------------------------------------------------
+
 @router.post(
     "/{image_id}/gradcam",
     response_class=Response,
@@ -266,13 +393,12 @@ def create_gradcam_visualization(
         db,
     )
 
-    # Apply the same quality gate to Grad-CAM.
+    image_bytes = get_safe_image_bytes(image_record)
+
     get_acceptable_quality_assessment(
         image_record.image_id,
         db,
     )
-
-    image_bytes = get_safe_image_bytes(image_record)
 
     try:
         visualization = generate_gradcam(image_bytes)

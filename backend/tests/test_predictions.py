@@ -499,3 +499,202 @@ def test_gradcam_blocks_review_required_image(
         == "IMAGE_REVIEW_REQUIRED"
     )
     assert gradcam_called is False
+
+
+# --------------------------------------------------
+# PREDICTION HISTORY TESTS
+# --------------------------------------------------
+
+def create_saved_test_prediction(
+    client,
+    db_session,
+    tmp_path,
+    monkeypatch,
+    headers,
+):
+    """
+    Upload an image and create a saved prediction
+    for the authenticated user.
+    """
+
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(
+        predictions,
+        "predict_image",
+        fake_prediction,
+    )
+
+    case_response = client.post(
+        "/api/v1/cases",
+        headers=headers,
+    )
+
+    assert case_response.status_code == 201
+
+    case_id = case_response.json()["case_id"]
+
+    image_id = upload_test_image(
+        client,
+        case_id,
+        headers,
+    )
+
+    mark_quality_acceptable(
+        db_session,
+        image_id,
+    )
+
+    prediction_response = client.post(
+        f"/api/v1/predictions/{image_id}",
+        headers=headers,
+    )
+
+    assert prediction_response.status_code == 201
+
+    return prediction_response.json()
+
+
+def test_prediction_history_requires_authentication(client):
+    response = client.get(
+        "/api/v1/predictions/history"
+    )
+
+    assert response.status_code == 401
+
+
+def test_prediction_history_returns_empty_list_for_new_user(client):
+    _, headers = create_test_case(client)
+
+    response = client.get(
+        "/api/v1/predictions/history",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["items"] == []
+    assert data["total"] == 0
+    assert data["page"] == 1
+    assert data["page_size"] == 10
+    assert data["total_pages"] == 0
+    assert "not a medical diagnosis" in data["disclaimer"]
+
+
+def test_prediction_history_returns_saved_predictions(
+    client,
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    _, headers = create_test_case(client)
+
+    saved_prediction = create_saved_test_prediction(
+        client,
+        db_session,
+        tmp_path,
+        monkeypatch,
+        headers,
+    )
+
+    response = client.get(
+        "/api/v1/predictions/history",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+
+    item = data["items"][0]
+
+    assert item["prediction_id"] == saved_prediction["prediction_id"]
+    assert item["image_id"] == saved_prediction["image_id"]
+    assert item["predicted_label"] == "BCC"
+    assert item["confidence"] == 0.40
+    assert item["status"] == "completed"
+    assert len(item["class_scores"]) == 6
+    assert item["architecture"] == predictions.MODEL_ARCHITECTURE
+
+
+def test_prediction_history_is_isolated_between_users(
+    client,
+    db_session,
+    tmp_path,
+    monkeypatch,
+):
+    _, user_a_headers = create_test_case(client)
+
+    user_a_prediction = create_saved_test_prediction(
+        client,
+        db_session,
+        tmp_path,
+        monkeypatch,
+        user_a_headers,
+    )
+
+    _, user_b_headers = create_test_case(client)
+
+    user_b_prediction = create_saved_test_prediction(
+        client,
+        db_session,
+        tmp_path,
+        monkeypatch,
+        user_b_headers,
+    )
+
+    user_a_response = client.get(
+        "/api/v1/predictions/history",
+        headers=user_a_headers,
+    )
+
+    user_b_response = client.get(
+        "/api/v1/predictions/history",
+        headers=user_b_headers,
+    )
+
+    assert user_a_response.status_code == 200
+    assert user_b_response.status_code == 200
+
+    user_a_items = user_a_response.json()["items"]
+    user_b_items = user_b_response.json()["items"]
+
+    assert len(user_a_items) == 1
+    assert len(user_b_items) == 1
+
+    assert (
+        user_a_items[0]["prediction_id"]
+        == user_a_prediction["prediction_id"]
+    )
+
+    assert (
+        user_b_items[0]["prediction_id"]
+        == user_b_prediction["prediction_id"]
+    )
+
+    assert (
+        user_a_items[0]["prediction_id"]
+        != user_b_items[0]["prediction_id"]
+    )
+
+
+def test_prediction_history_rejects_invalid_pagination(client):
+    _, headers = create_test_case(client)
+
+    invalid_page = client.get(
+        "/api/v1/predictions/history?page=0",
+        headers=headers,
+    )
+
+    invalid_page_size = client.get(
+        "/api/v1/predictions/history?page_size=51",
+        headers=headers,
+    )
+
+    assert invalid_page.status_code == 422
+    assert invalid_page_size.status_code == 422
