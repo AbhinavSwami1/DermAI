@@ -1,603 +1,346 @@
-Phase 2: Image Preprocessing
+DermAI — Project Status
 
-Status: COMPLETED
+Last updated: November 2026
+Project type: Academic research prototype
+Selected model: Fine-tuned MobileNetV3-Large
+Model version: mobilenet_v3_large_finetuned_epoch9
 
-Implemented
+1. Project Overview
 
-* Image loading with PIL.
-* Conversion of images to RGB.
-* Resizing to 224x224 using LANCZOS interpolation.
-* Pixel normalization to the range [0, 1].
+DermAI is a research-oriented skin lesion image analysis prototype developed using PAD-UFES-20 and Fitzpatrick17k datasets.
+
+The system includes:
+
+* Image upload and validation.
+* User authentication and authorization.
+* Case and image management.
+* Image quality assessment.
+* Deep-learning-based classification.
+* Prediction history and persistence.
+* Grad-CAM explainability visualizations.
+* Research performance dashboards.
+
+DermAI is not clinically validated and must not be used as a substitute for professional medical diagnosis or treatment.
+
+2. Dataset Audit
+
+PAD-UFES-20
+
+Property	Audited result
+Original images	2,298
+Metadata columns	26
+Unique patients	1,373
+Unique lesions	1,641
+Patient-lesion combinations	1,891
+Successfully matched images	2,298
+Missing or unlisted images	0
+
+The dataset audit report records image readability, file formats, dimensions, diagnostic labels, missing metadata and duplicate-risk checks.
+
+Dataset splitting
+
+A patient-grouped, stratified five-fold splitting approach was implemented to reduce patient-level leakage.
+
+The selected split contains:
+
+Partition	Images	Patients
+Training	1,477	880
+Validation	361	220
+Testing	460	273
+Total	2,298	1,373
+
+The selected split was checked for patient and image overlap.
+
+Reference: docs/PAD_UFES_20_AUDIT_REPORT.md
+
+Note: Diagnostic class counts should be taken from the verified dataset audit, not inferred from the held-out test distribution.
+
+3. Image Preprocessing
+
+Standalone preprocessing utility
+
+File: ml/src/preprocessing/image_preprocessing.py
+
+Implemented operations:
+
+* Image loading using Pillow.
+* RGB conversion.
+* Resizing to 224 × 224 using LANCZOS.
+* Pixel scaling from 0–255 to 0–1.
 * Batch preprocessing with recursive subfolder support.
-* Processed images saved in PNG format.
 
-Dataset Processing Results
+The dataset processing report records 2,298 successfully processed images and zero failures.
 
-* Dataset: PAD-UFES-20
-* Original images: 2,298
-* Successfully processed: 2,298
-* Failed images: 0
-* Verified images: 2,298
-* Image dimensions: 224x224
-* Color mode: RGB
-* Output format: PNG
-
-Validation
-
-All 2,298 processed images were independently verified.
-No invalid images were found.
-
-Output
+Output directory:
 
 ml/datasets/processed/pad_ufes_20/
 
-Note: Processed image files are excluded from GitHub. Normalization is applied during model input preparation.
+Processed image files are excluded from Git.
 
-⸻
+Actual model training transformations
 
-Phase 5: Model Improvement and Comparison — Completed
+File: ml/src/data/augmentations.py
 
-Three transfer-learning experiments were conducted using the PAD-UFES-20 dataset.
+Training:
 
-Experiments
+* Random horizontal flip.
+* Random vertical flip.
+* Random rotation up to 15 degrees.
+* Tensor conversion.
+* ImageNet normalization.
 
-1. MobileNetV3-Small baseline
-2. Fine-tuned MobileNetV3-Small
-3. EfficientNet-B0 transfer learning
+Validation and testing:
 
-Validation Comparison
+* Tensor conversion.
+* ImageNet normalization.
 
-Metric	MobileNetV3 Baseline	Fine-Tuned MobileNetV3	EfficientNet-B0
-Accuracy	60.39%	59.83%	61.22%
-Macro Precision	55.00%	53.00%	51.81%
-Macro Recall	61.00%	60.00%	55.00%
-Macro F1	54.00%	54.00%	52.59%
-Weighted F1	63.00%	62.00%	61.96%
+The training and evaluation scripts explicitly pass these transformations to DermAIDataset.
 
-Outcome
+Backend inference transformations
 
-* EfficientNet-B0 achieved the highest validation accuracy.
-* MobileNetV3-Small baseline achieved the highest macro recall and weighted F1.
-* MobileNetV3-Small baseline remains the preferred research baseline.
-* Fine-tuning did not improve overall validation performance.
+File: backend/app/services/inference_service.py
 
-Artifacts
+* EXIF orientation correction.
+* RGB conversion.
+* Resize to 224 × 224 using LANCZOS.
+* Tensor conversion.
+* ImageNet normalization.
 
-* docs/PHASE5_MODEL_COMPARISON_REPORT.md
-* ml/outputs/reports/phase5_model_comparison.csv
-* ml/checkpoints/efficientnet/best_efficientnet_b0.pth (ignored by Git)
+The standalone preprocessing utility’s 0–1 scaling is distinct from the ImageNet-normalized model input pipeline.
 
-Limitations
+4. Model Training and Evaluation
 
-The test partition was not used for Phase 5 model selection. Results are based on one patient-safe validation split. External clinical validation has not been performed.
+Selected model
 
-DermAI remains an academic research and screening-support project, not an autonomous diagnostic system.
+Fine-tuned MobileNetV3-Large
 
-⸻
+* Architecture: MobileNetV3-Large.
+* Input size: 224 × 224.
+* Number of classes: 6.
+* Selected checkpoint: ml/checkpoints/mobilenet/best_mobilenet_v3_large_finetuned.pth
+* Model version: mobilenet_v3_large_finetuned_epoch9
+* Best checkpoint selected using validation loss.
 
-Phase 6: Lesion Localization and Explainability — Completed
+Held-out test performance
 
-Annotation Audit
+Evaluation artifact:
 
-The locally available PAD-UFES-20 and Fitzpatrick17k dataset files were inspected for spatial annotations.
+ml/outputs/mobilenet_v3_large_finetuned/test_metrics.json
 
-* Image-level diagnostic labels are available.
-* No bounding-box coordinates or segmentation masks were identified in the inspected local dataset files.
-* Lesion measurements and anatomical body-region metadata are not pixel-level localization annotations.
+Metric	Test result
+Test samples	460
+Accuracy	57.39%
+Macro Precision	52.44%
+Weighted Precision	65.48%
+Macro Recall	52.70%
+Weighted Recall	57.39%
+Macro F1-score	51.02%
+Weighted F1-score	60.12%
 
-Approach
+Per-class test F1-score
 
-Grad-CAM was implemented using the trained MobileNetV3-Small baseline checkpoint.
+Class	F1-score
+ACK	69.89%
+BCC	61.22%
+MEL	28.57%
+NEV	68.57%
+SCC	25.00%
+SEK	52.87%
 
-The prototype generates class-discriminative activation heatmaps and overlays them on the original input images.
+Performance varies across classes, and minority-class performance remains a limitation.
 
-Qualitative Evaluation
+Validation comparison
 
-Six held-out test examples were visualized, one from each PAD-UFES-20 diagnostic class.
+The saved validation comparison for MobileNetV3-Large shows:
 
-* Generated visualizations: 6
-* Correct classifications among these examples: 4
-* Lesion-focused activation was observed in several examples.
-* Background activation and partial lesion coverage were also observed.
-* Correct classification did not always imply reliable lesion-focused activation.
+Metric	Baseline	Fine-tuned
+Accuracy	58.45%	61.22%
+Macro Precision	53.14%	56.85%
+Macro Recall	59.43%	61.34%
+Macro F1	53.63%	56.53%
+Weighted F1	59.75%	63.61%
 
-These six examples are illustrative and do not establish localization performance.
+These are validation results, not held-out test results.
 
-Evaluation Limitations
+EfficientNet-B0 was also implemented as a separate transfer-learning experiment. Model comparisons must retain their evaluation split and metric provenance.
 
-No ground-truth spatial annotations were available in the inspected local dataset files. Therefore, Dice, IoU and bounding-box localization metrics could not be calculated.
+Evaluation artifacts
 
-Grad-CAM is an explainability visualization, not a verified lesion segmentation or boundary-detection method.
+ml/outputs/mobilenet_v3_large_finetuned/
 
-Artifacts
+Includes:
 
-* docs/GRADCAM_LOCALIZATION_REPORT.md
+* Test metrics JSON.
+* Test classification report.
+* Test confusion matrix.
+* Test predictions.
+* Validation classification report.
+* Validation confusion matrix.
+* Training history.
+* Accuracy and loss curves.
+
+5. Grad-CAM Explainability
+
+Grad-CAM is integrated into the backend prediction workflow.
+
+Selected checkpoint: Fine-tuned MobileNetV3-Large, epoch 9.
+
+Implementation:
+
 * ml/src/explainability/gradcam.py
 * ml/src/explainability/generate_visualizations.py
-* ml/outputs/gradcam/ (generated visualizations and CSV; excluded from Git if covered by .gitignore)
+* backend/app/services/gradcam_service.py
 
-Conclusion
+The system generates class-discriminative activation heatmaps and overlays.
 
-The Grad-CAM prototype was integrated with the existing classification workflow as an experimental explainability component. Further evaluation with spatially annotated data and a larger sample is required.
+The local dataset audit did not identify ground-truth segmentation masks or bounding-box annotations in the inspected files. Therefore, Grad-CAM visualizations are qualitative explanations and not verified lesion segmentation.
 
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+Dice, IoU and localization accuracy must not be claimed without suitable spatial ground truth.
 
-⸻
+Reference: docs/GRADCAM_LOCALIZATION_REPORT.md
 
-W2.3 — FastAPI Backend Foundation
+6. FastAPI Backend
 
-Implemented Components
+Implemented components:
 
-* Initialized the FastAPI application.
-* Added root endpoint: GET /.
-* Added health endpoint: GET /health.
-* Added image upload endpoint: POST /api/v1/upload.
-* Implemented JPEG and PNG image format validation.
-* Added a maximum upload size limit of 10 MB.
-* Added minimum image dimensions validation of 224 x 224 pixels.
-* Added corrupted and unsupported image rejection.
-* Implemented UUID-based filenames for uploaded images.
-* Added original image storage under backend/storage/original/.
+* FastAPI application.
+* Root and health endpoints.
+* User registration and profile APIs.
+* Case creation and retrieval APIs.
+* Image upload and retrieval APIs.
+* Prediction API.
+* Grad-CAM API.
+* PostgreSQL persistence.
+* Image validation and local storage.
 
-Automated Testing
+Image upload validation
 
-Created automated API tests using pytest and FastAPI TestClient.
+* JPEG and PNG validation.
+* Maximum upload size: 10 MB.
+* Minimum dimensions: 224 × 224.
+* Corrupt and unsupported image rejection.
+* UUID-based storage filenames.
+* Original image storage under backend storage.
 
-Test Case	Result
-Valid PNG upload	Passed
-Valid JPEG upload	Passed
-Corrupted image rejection	Passed
-Unsupported GIF rejection	Passed
-Small image rejection	Passed
-Oversized file rejection	Passed
+7. PostgreSQL Database
 
-Test Summary: 6 passed, 0 failed.
-
-Current Limitations
-
-* Database integration is pending.
-* User authentication and authorization are pending.
-* Uploaded images are stored locally.
-* Case and prediction records are not yet created.
-* Image upload validation does not establish diagnostic accuracy.
-
-Conclusion
-
-The initial FastAPI backend and image upload validation workflow have been implemented and tested successfully. Database integration, authentication, and model inference API integration remain future development tasks.
-
-DermAI is an academic research prototype and is not a clinically validated diagnostic system.
-
-⸻
-
-W2.4 — PostgreSQL Database Integration
-
-Implemented Components
-
-* Created a dedicated PostgreSQL database named derm_ai_db.
-* Integrated PostgreSQL with SQLAlchemy ORM.
-* Implemented database engine and session management.
-* Created seven SQLAlchemy ORM models:
-    * Users
-    * Roles
-    * User Roles
-    * Cases
-    * Images
-    * Model Versions
-    * Predictions
-* Implemented primary keys, foreign keys, and unique constraints.
-* Configured UUID-based identifiers.
-* Added PostgreSQL JSONB support for prediction class scores.
-* Integrated Alembic for database schema migrations.
-* Generated and successfully applied the initial database migration.
-* Configured database connection using environment variables through backend/.env.
-* Added alembic to backend requirements.
-
-Database Tables
-
-Table	Purpose
-users	Stores user account information
-roles	Stores available user roles
-user_roles	Maps users to roles
-cases	Stores user-associated cases
-images	Stores uploaded image metadata
-model_versions	Tracks model versions
-predictions	Stores model prediction records
-
-Database Verification
-
-Verification	Result
-PostgreSQL connection	Passed
-SQLAlchemy connection	Passed
-ORM model registration	7 tables loaded
-Database migration	Applied successfully
-Database tables	7 application tables created
-Foreign-key relationships	6 verified
-Alembic migration status	Current revision verified
-Environment-based configuration	Passed
-
-Migration Revision: 244e263f1f95
 Database: derm_ai_db
 
-Current Limitations
+SQLAlchemy ORM models:
 
-* User authentication and authorization are pending.
-* API endpoints are not yet integrated with database operations.
-* Image upload currently stores files locally.
-* Case and prediction records are not yet automatically created through API workflows.
-* Model inference API integration is pending.
-* Database migration and schema creation do not establish diagnostic accuracy.
+1. Users
+2. Roles
+3. User Roles
+4. Cases
+5. Images
+6. Model Versions
+7. Predictions
+8. Refresh Tokens
+9. Image Quality Assessments
 
-Conclusion
+Migration history
 
-The PostgreSQL database foundation has been implemented using SQLAlchemy and Alembic. Seven database tables, their primary and foreign-key relationships, and environment-based database configuration have been successfully established and verified.
+Revision	Description
+244e263f1f95	Initial DermAI schema
+cf242a5da3ba	Refresh token table
+e93c9c1565a8	Image quality assessments
 
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+Current revision:
 
-W2.5 — FastAPI and PostgreSQL CRUD Integration
+e93c9c1565a8 (head)
 
-Status: Completed
+Alembic verification:
+
+No new upgrade operations detected.
+
+This confirms no pending schema differences were detected at the time of verification.
+
+8. Authentication and Security
 
 Implemented:
 
-* PostgreSQL database session dependency using SQLAlchemy.
-* User registration API with Argon2 password hashing.
-* Pydantic request and response schemas.
-* Case creation and retrieval APIs.
-* Image upload integrated with PostgreSQL metadata persistence.
-* Image-to-case foreign key relationship.
-* Image validation and local file storage.
-* Isolated PostgreSQL test database for automated testing.
-
-API Endpoints
-
-Method	Endpoint	Purpose
-POST	/api/v1/users/register	Register user
-POST	/api/v1/cases	Create case
-GET	/api/v1/users/{owner_id}/cases	Retrieve user cases
-GET	/api/v1/cases/{case_id}	Retrieve individual case
-POST	/api/v1/upload	Upload image and save metadata
-
-Testing
-
-* Total automated tests: 15
-* Passed: 15
-* Failed: 0
-
-Security limitation: Authentication, authorization, and ownership enforcement are still pending. Current case endpoints are development-stage APIs and are not production-ready for access control.
-
-## W2.6 — JWT Authentication and Authorization
-
-Status: Completed
-
-### Implemented Features
-
-* JWT-based access token generation using PyJWT.
-* Configurable JWT secret, algorithm, and token expiration.
-* User login API with email and password verification.
-* Argon2 password hash verification.
-* HTTP Bearer token authentication.
-* Current authenticated user dependency.
-* Protected user profile endpoint.
-* Case ownership enforcement.
-* Authenticated case creation.
-* Prevention of cross-user case access.
-* Protected image upload endpoint.
-* Prevention of image uploads to another user's case.
-* Authentication and authorization test coverage.
-
-### Authentication API Endpoints
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | /api/v1/auth/login | Authenticate user and generate JWT |
-| GET | /api/v1/users/me | Retrieve authenticated user profile |
-
-### Authorization
-
-* Unauthenticated requests to protected endpoints are rejected.
-* Users can create cases only for themselves.
-* Users can retrieve only their own cases.
-* Users cannot access another user's cases.
-* Image uploads require authentication.
-* Images can only be uploaded to cases owned by the authenticated user.
-* Invalid or expired tokens are rejected.
-
-### Security Measures
-
 * Argon2 password hashing.
-* JWT access tokens using HS256.
-* Configurable 30-minute access token expiration.
-* JWT secret stored in backend/.env.
-* Environment template contains only a placeholder secret.
-* Password hashes are excluded from API responses.
+* JWT access tokens.
+* Protected API endpoints.
+* Authenticated user dependency.
+* Case and image ownership enforcement.
+* Role-based access control.
+* Patient role assignment.
+* Administrator role provisioning.
+* Refresh token generation and hashed storage.
+* Refresh token rotation.
+* Token-family tracking and reuse detection.
+* Logout and token revocation.
+* Login rate limiting.
 
-### Automated Testing
-
-* Case API tests: 7 passed.
-* Image upload tests: 8 passed.
-* User API tests: 8 passed.
-* Role API tests: 5 passed.
-* Database tests: 1 passed.
-* Total tests: 29 passed.
-* Failed tests: 0.
-
-### Current Limitations
-
-* Role-based authorization (RBAC), default Patient assignment, and Administrator role provisioning are completed.
-* Refresh token and logout/revocation mechanisms are pending.
-* Image files are currently stored locally.
-* Model inference API integration is pending.
-* Additional production security hardening is required.
-
-### Conclusion
-
-JWT authentication, ownership-based authorization, and role-based access control (RBAC) have been integrated into the DermAI FastAPI backend. Public registration automatically assigns the Patient role, while only Administrators can assign additional roles. The first Administrator has been provisioned through a controlled database operation. These workflows have been verified through 29 automated tests.
-
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
-
-
-W2.8 — Login Rate Limiting
-
-Status: Completed
-
-Implemented Features
-
-* Integrated SlowAPI for API rate limiting.
-* Configured login endpoint to allow a maximum of 5 attempts per minute per client IP.
-* Requests exceeding the configured limit receive HTTP 429 (Too Many Requests).
-* Configured rate-limit exception handling in the FastAPI application.
-* Enabled rate-limit response headers.
-* Used direct client IP identification without trusting forwarded IP headers by default.
-* Added automated login rate-limit security testing.
-* Added rate-limiter reset fixtures to maintain test isolation.
-
-Security Configuration
+Authentication configuration
 
 Setting	Configuration
-Protected endpoint	POST /api/v1/auth/login
-Maximum attempts	5
-Time window	1 minute
-Rate-limit library	SlowAPI 0.1.10
-Exceeded limit response	HTTP 429
-Client identification	Direct IP address
+Access token algorithm	HS256
+Access token expiration	30 minutes
+Refresh token expiration	7 days
+Refresh token storage	SHA-256 hash
+Refresh token delivery	HttpOnly cookie
+Login rate limit	5 attempts per minute
 
-Automated Testing
+Remaining security considerations
 
-* Login rate-limit security test: 1 passed.
-* Case API tests: 7 passed.
-* Image upload tests: 8 passed.
-* User API tests: 8 passed.
-* Role API tests: 5 passed.
-* Database tests: 1 passed.
-* Total automated tests: 30 passed.
-* Failed tests: 0.
-
-Current Limitations
-
-* Rate-limit storage is currently process-local. Redis-backed shared storage should be configured before deploying across multiple workers or servers.
-* Refresh token and logout/revocation mechanisms are pending.
-* Image files are currently stored locally.
-* Model inference API integration is pending.
-* Additional production security hardening is required.
-
-Conclusion
-
-Login rate limiting has been integrated into the DermAI FastAPI backend using SlowAPI. The login endpoint limits clients to five attempts per minute and rejects excess requests with HTTP 429. The complete backend test suite passes all 30 automated tests.
-
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
-
-## W2.9 — Refresh Token Lifecycle Management
-
-**Status: Completed**
-
-### Implemented Features
-
-- Database-backed refresh token management.
-- Cryptographically secure opaque refresh token generation.
-- SHA-256 hashing before PostgreSQL storage.
-- Seven-day refresh token expiration.
-- HttpOnly refresh token cookies.
-- Refresh token rotation after successful refresh requests.
-- Token-family tracking using UUIDs.
-- Refresh token reuse detection and family revocation.
-- Logout with refresh token revocation and cookie clearing.
-- Unique JWT ID (`jti`) claims for access tokens.
-
-### Authentication Endpoints
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/api/v1/auth/login` | Authenticate and issue access and refresh tokens |
-| POST | `/api/v1/auth/refresh` | Rotate refresh token and issue a new access token |
-| POST | `/api/v1/auth/logout` | Revoke refresh token and clear authentication cookie |
-
-### Security Configuration
-
-| Setting | Configuration |
-|---|---|
-| Access token algorithm | HS256 |
-| Access token expiration | 30 minutes |
-| Refresh token expiration | 7 days |
-| Refresh token storage | SHA-256 hash |
-| Refresh token delivery | HttpOnly cookie |
-| Cookie SameSite | Lax |
-| Cookie Secure | Configurable |
-| Token rotation | Enabled |
-| Reuse detection | Enabled |
-| Token-family revocation | Enabled |
+* Redis-backed shared rate-limit storage for multi-worker deployments.
+* CSRF protection review.
+* HTTPS enforcement in production.
+* Additional production security and deployment hardening.
 
-### Automated Testing
+9. Frontend Integration
 
-- Refresh token persistence: passed.
-- Refresh token expiration: passed.
-- Refresh token rotation: passed.
-- Token-family revocation: passed.
-- Secure refresh cookie: passed.
-- Refresh API: passed.
-- Logout and cookie clearing: passed.
-- Refresh token replay protection: passed.
-- Complete backend regression suite: **38 passed, 0 failed**.
+The React frontend provides:
 
-### Security Limitations
+* User authentication.
+* Image selection and preview.
+* Image quality feedback.
+* Prediction display.
+* Class-score visualization.
+* Grad-CAM visualization.
+* Prediction history.
+* Research performance dashboard.
+* Research-only disclaimer.
 
-- Previously issued access JWTs remain valid until expiration, even after logout.
-- CSRF protections require additional review before production deployment.
-- Redis-backed rate-limit storage is recommended for multi-worker deployments.
-- HTTPS and the Secure cookie attribute must be enforced in production.
+Frontend production build was successfully verified using:
 
-### Conclusion
+npm run build
 
-The DermAI backend now supports refresh token generation, hashed database storage, token rotation, reuse detection, token-family revocation, and logout.
+10. Automated Testing
 
-All 38 backend automated tests pass.
+Latest verified backend test command:
 
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+PYTHONPATH="$PWD:$PWD/backend" pytest -q backend/tests/
 
----
+Result:
 
-# W3.0 — Deep Learning Model Inference API Integration
+73 passed, 0 failed.
 
-### Model Integration
+Two non-blocking deprecation warnings were reported.
 
-- Integrated the trained MobileNetV3-Small baseline checkpoint.
-- Checkpoint: `ml/checkpoints/mobilenet/best_mobilenet_v3_small.pth`.
-- Implemented lazy model loading and inference-device selection (CUDA, Apple MPS, or CPU).
-- Added RGB image preprocessing and resizing to 224×224.
-- Applied ImageNet normalization.
-- Added six-class probability generation using softmax.
+Frontend TypeScript checking and Vite production build also passed.
 
-### Class Mapping
+11. Known Limitations and Future Work
 
-| Index | Class |
-|---|---|
-| 0 | ACK |
-| 1 | BCC |
-| 2 | MEL |
-| 3 | NEV |
-| 4 | SCC |
-| 5 | SEK |
+* The model is not clinically validated.
+* Test accuracy and class-wise performance require further improvement.
+* Minority-class performance remains limited.
+* External dataset validation is required.
+* Image quality thresholds are heuristic and require calibration.
+* Grad-CAM is not a segmentation model.
+* Production deployment requires additional security hardening.
+* Performance, latency and clinical utility require separate evaluation.
 
-### Prediction API
+12. Overall Project Status
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/api/v1/predictions/{image_id}` | Generate and save a prediction for an uploaded image |
+The DermAI research prototype includes a working frontend, FastAPI backend, PostgreSQL persistence, authentication, image quality assessment, MobileNetV3-Large inference and Grad-CAM visualization.
 
-- Requires authentication.
-- Verifies image ownership before inference.
-- Validates the stored image before processing.
-- Saves prediction results and class scores in PostgreSQL.
-- Associates predictions with a registered model version.
-- Returns predicted class, confidence, class scores, model metadata, and timestamp.
-- Includes a research-only disclaimer.
+The selected model has been evaluated on a held-out test partition of 460 images.
 
-### Dependencies
+The implementation has passed 73 backend automated tests, and the frontend production build has been verified.
 
-- PyTorch 2.15.0
-- Torchvision 0.29.2
+Final status: Research prototype implemented; further model evaluation, external validation and production hardening remain necessary.
 
-### Automated Testing
-
-- Inference preprocessing: passed.
-- Six-class probability output: passed.
-- Empty and corrupted image rejection: passed.
-- Prediction generation and database persistence: passed.
-- Authentication enforcement: passed.
-- Image ownership protection: passed.
-- Non-existent image rejection: passed.
-- Inference failure handling (HTTP 503): passed.
-- Storage path traversal protection: passed.
-- Complete backend regression suite: **48 passed, 0 failed**.
-
-Two non-blocking deprecation warnings remain in the test environment.
-
-### Research Limitations
-
-- Predictions are experimental model outputs, not confirmed diagnoses.
-- The model was evaluated on the PAD-UFES-20 dataset; generalization to other populations and image sources is not established.
-- The prediction API does not establish clinical validity or diagnostic safety.
-- Production deployment requires further security, performance, and deployment validation.
-
-### Conclusion
-
-W3.0 integrates the MobileNetV3-Small research baseline into the authenticated DermAI backend, with image preprocessing, six-class inference, database persistence, and model-version tracking.
-
-The complete backend test suite passes with 48 tests and zero failures.
-
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
-
----
-
-# W3.1 — Grad-CAM Explainability API Integration
-
-### Explainability Integration
-
-- Integrated the existing Grad-CAM implementation into the backend.
-- Reused the trained MobileNetV3-Small baseline checkpoint.
-- Target convolutional layer: `model.features[-1]`.
-- Implemented gradient-based class activation heatmap generation.
-- Applied ReLU and min-max normalization to the activation map.
-- Resized the heatmap to match the original image dimensions.
-- Generated colored overlays using the JET colormap with 45% opacity.
-- Added EXIF orientation correction for uploaded images.
-- Implemented hook cleanup and model gradient cleanup.
-- Added a shared execution lock to synchronize normal prediction and Grad-CAM operations on the cached model.
-
-### Grad-CAM API
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/api/v1/predictions/{image_id}/gradcam` | Generate a Grad-CAM visualization for an uploaded image |
-
-- Requires authentication.
-- Verifies image ownership before visualization.
-- Validates stored images before processing.
-- Returns the visualization as a PNG response.
-- Uses `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
-- Does not create duplicate prediction records.
-- Does not permanently store generated visualizations.
-- Includes a research-only disclaimer in the response headers.
-
-### Implementation Files
-
-- `backend/app/services/gradcam_service.py`
-- `backend/app/api/predictions.py`
-- `backend/tests/test_predictions.py`
-- Existing implementation: `ml/src/explainability/gradcam.py`
-
-### Dependencies
-
-- NumPy 2.4.6
-- Matplotlib 3.11.2
-- Pillow
-
-### Automated Testing
-
-- Grad-CAM PNG response generation: passed.
-- PNG content type and response headers: passed.
-- Authentication enforcement: passed.
-- Image ownership protection: passed.
-- Non-existent image rejection: passed.
-- Grad-CAM generation failure handling (HTTP 503): passed.
-- Storage path traversal protection: passed.
-- Full backend regression suite: **54 passed, 0 failed**.
-
-Two non-blocking deprecation warnings remain in the test environment.
-
-### Research Limitations
-
-- Grad-CAM visualizations represent model activation patterns, not verified lesion boundaries.
-- Heatmaps do not establish the model's clinical reasoning or diagnostic correctness.
-- Visualizations generated from synthetic images are pipeline tests, not meaningful medical results.
-- Clinical validity, diagnostic safety, and generalization remain unestablished.
-- Further evaluation is required before any clinical application.
-
-### Conclusion
-
-W3.1 integrates Grad-CAM explainability into the authenticated DermAI backend through a dedicated visualization API.
-
-The implementation reuses the trained MobileNetV3-Small baseline and returns PNG overlays without modifying the existing prediction workflow.
-
-The complete backend test suite passes with 54 tests and zero failures.
-
-DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
+Medical disclaimer: DermAI is an academic research prototype, not a clinically validated diagnostic system. Its predictions must not be used to make medical decisions.
