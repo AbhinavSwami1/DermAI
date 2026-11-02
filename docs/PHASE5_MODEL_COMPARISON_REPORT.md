@@ -1,17 +1,20 @@
-# **DermAI — Phase 5: Model Improvement and Comparison**
+DermAI — Phase 5: Model Improvement and Comparison
 
-## **1\. Overview**
+1. Overview
 
-Phase 5 focused on improving and comparing deep learning architectures for skin lesion image classification using the PAD-UFES-20 dataset.
-Three experiments were conducted:
+Phase 5 focused on transfer-learning experiments for six-class skin-lesion image classification using the PAD-UFES-20 dataset.
 
-1. MobileNetV3-Small baseline
-2. Fine-tuned MobileNetV3-Small
-3. EfficientNet-B0 transfer learning
+The verified comparison includes:
+
+1. MobileNetV3-Large baseline
+2. Fine-tuned MobileNetV3-Large
+3. EfficientNet-B0
 
 The objective was to compare model performance using the same patient-safe training and validation partitions.
 
-## **2\. Dataset and Experimental Setup**
+The selected model for the current backend inference workflow is MobileNetV3-Large Fine-Tuned.
+
+2. Dataset and Experimental Setup
 
 * Dataset: PAD-UFES-20
 * Total images: 2,298
@@ -24,9 +27,10 @@ The objective was to compare model performance using the same patient-safe train
 * Test patients: 273
 
 Patient-level grouping was used to prevent patient overlap between training, validation and test partitions.
-The test partition was not used for Phase 5 model selection or tuning.
 
-### **Disease Classes**
+The test partition was kept separate from model selection and hyperparameter tuning.
+
+Disease Classes
 
 * ACK
 * BCC
@@ -35,128 +39,172 @@ The test partition was not used for Phase 5 model selection or tuning.
 * SCC
 * SEK
 
-### **Training Configuration**
+Common Training Configuration
 
 * Image size: 224 × 224
 * Color mode: RGB
-* Preprocessing: ImageNet normalization
+* Normalization: ImageNet mean and standard deviation
 * Batch size: 16
 * Optimizer: Adam
-* Learning rate: 0.0001 for classifier-only training
 * Weight decay: 0.0001
 * Loss function: Weighted Cross Entropy
 * Training device: Apple MPS
+* Random seed: 42
 
 Class weights were calculated using training data only.
 
-## **3\. Experiment 1 — MobileNetV3\-Small Baseline**
+3. Experiment 1 — MobileNetV3-Large Baseline
 
-A pretrained MobileNetV3-Small architecture was used.
-The feature extractor was frozen, and the final classification layer was trained for six disease classes.
+A pretrained MobileNetV3-Large architecture was used with its feature extractor frozen and a six-class classification layer.
 
-### **Results**
+Validation Results
 
-* Training epochs: 20
-* Best validation loss: 1.1003
-* Best validation accuracy: 62.88% during training
-* Validation accuracy at the best-loss checkpoint: 60.39%
-* Validation macro F1-score: 54.00%
-* Validation weighted F1-score: 63.00%
+Metric	Result
+Accuracy	58.45%
+Macro Precision	53.14%
+Macro Recall	59.43%
+Macro F1-score	53.63%
+Weighted F1-score	59.75%
 
-The model was also evaluated on the test partition during the earlier baseline experiment:
+Validation support: 361 images.
 
-* Test accuracy: 55.00%
-* Test macro F1-score: approximately 0.49
-* Test weighted F1-score: approximately 0.58
+4. Experiment 2 — Fine-Tuned MobileNetV3-Large
 
-The test results are retained as historical baseline results and were not used for Phase 5 model selection.
+The pretrained MobileNetV3-Large model was fine-tuned to improve its classification performance.
 
-## **4\. Experiment 2 — Fine\-Tuned MobileNetV3\-Small**
+The selected checkpoint was saved at epoch 9.
 
-The deeper feature extraction blocks (10–12) and classifier were unfrozen.
-Differential learning rates were used:
+Checkpoint Information
 
-* Feature extractor: 0.00001
-* Classifier: 0.0001
+* Architecture: MobileNetV3-Large
+* Checkpoint: best_mobilenet_v3_large_finetuned.pth
+* Selected epoch: 9
+* Best validation loss: 1.065688
+* Validation accuracy at selected checkpoint: 61.22%
+* Input resolution: 224 × 224
+* Normalization: ImageNet mean and standard deviation
 
-### **Results**
+Validation Results
 
-* Training epochs: 15
-* Best validation loss: 0.9248
-* Validation accuracy at the best-loss checkpoint: 59.83%
-* Validation macro F1-score: 54.00%
-* Validation weighted F1-score: 62.00%
+Metric	Result
+Accuracy	61.22%
+Macro Precision	56.85%
+Macro Recall	61.34%
+Macro F1-score	56.53%
+Weighted F1-score	63.61%
 
-Fine-tuning improved some individual class metrics but did not improve overall macro F1 or validation accuracy compared with the baseline.
+Validation support: 361 images.
 
-## **5\. Experiment 3 — EfficientNet\-B0**
+5. Experiment 3 — EfficientNet-B0
 
-A pretrained EfficientNet-B0 architecture was used.
-The complete feature extractor was frozen, and only the final classifier was trained.
+A pretrained EfficientNet-B0 architecture was evaluated using transfer learning.
 
-### **Training Configuration**
+The experiment used the same dataset partition and six-class classification task.
 
-* Maximum epochs: 20
-* Completed epochs: 20
-* Trainable parameters: 7,686
-* Total parameters: 4,015,234
-* Training time: approximately 4.14 minutes
-* Early stopping patience: 5
+Validation Results
 
-### **Training Results**
+Metric	Result
+Accuracy	59.56%
+Macro Precision	52.36%
+Macro Recall	56.30%
+Macro F1-score	52.38%
+Weighted F1-score	60.72%
 
-* Final training accuracy: 65.13%
-* Best validation loss: 1.1952 at epoch 20
-* Highest validation accuracy: 61.50% at epoch 19
+Validation support: 361 images.
 
-### **Validation Results**
+6. Model Comparison
 
-* Accuracy: 61.22%
-* Macro precision: 51.81%
-* Macro recall: 55.00%
-* Macro F1-score: 52.59%
-* Weighted F1-score: 61.96%
+The following comparison uses validation results only.
 
-EfficientNet-B0 achieved the highest validation accuracy among the three experiments, but did not improve macro F1.
+Metric	MobileNetV3-Large Baseline	MobileNetV3-Large Fine-Tuned	EfficientNet-B0
+Accuracy	58.45%	61.22%	59.56%
+Macro Precision	53.14%	56.85%	52.36%
+Macro Recall	59.43%	61.34%	56.30%
+Macro F1-score	53.63%	56.53%	52.38%
+Weighted F1-score	59.75%	63.61%	60.72%
 
-## **6\. Model Comparison**
+Fine-tuning MobileNetV3-Large improved all five reported validation metrics compared with its baseline.
 
-| **Metric** | **MobileNetV3 Baseline** | **MobileNetV3 Fine-Tuned** | **EfficientNet-B0** |
-| ------ | -------------------- | ---------------------- | --------------- |
-| Accuracy | 60.39% | 59.83% | 61.22% |
-| Macro Precision | 55.00% | 53.00% | 51.81% |
-| Macro Recall | 61.00% | 60.00% | 55.00% |
-| Macro F1 | 54.00% | 54.00% | 52.59% |
-| Weighted F1 | 63.00% | 62.00% | 61.96% |
+7. Selected Model and Held-Out Test Evaluation
 
-## **7\. Observations**
+MobileNetV3-Large Fine-Tuned was selected for the current DermAI backend inference workflow.
 
-1. EfficientNet-B0 achieved the highest validation accuracy at 61.22%.
-2. MobileNetV3-Small baseline achieved the highest macro recall and weighted F1.
-3. MobileNetV3 fine-tuning did not produce an overall improvement.
-4. SCC remained a difficult class for all experiments.
-5. MEL had very few validation samples, so its class-wise metrics are uncertain.
-6. Class imbalance remains an important challenge.
-7. Validation accuracy alone is insufficient to judge model performance.
+Its selected checkpoint was evaluated on the held-out test partition containing 460 images.
 
-## **8\. Selected Research Baseline**
+Held-Out Test Results
 
-MobileNetV3-Small baseline is retained as the preferred research baseline because it provides stronger macro recall and weighted F1 than EfficientNet-B0.
-EfficientNet-B0 is retained as a comparison experiment because it achieved slightly higher validation accuracy.
-No model is claimed to be clinically validated or suitable for autonomous diagnosis.
+Metric	Result
+Accuracy	57.39%
+Macro Precision	52.44%
+Macro Recall	52.70%
+Macro F1-score	51.02%
+Weighted Precision	65.48%
+Weighted Recall	57.39%
+Weighted F1-score	60.12%
 
-## **9\. Limitations**
+These results are reported separately from validation results.
 
-* Experiments use one dataset and one primary patient-safe split.
-* The MEL validation support is only seven images.
+The held-out test results are an evaluation of the selected checkpoint, not a three-model test-set comparison.
+
+Per-Class Test Performance
+
+Class	Precision	Recall	F1-score	Support
+ACK	76.42%	64.38%	69.89%	146
+BCC	72.00%	53.25%	61.22%	169
+MEL	27.27%	30.00%	28.57%	10
+NEV	64.29%	73.47%	68.57%	49
+SCC	17.14%	46.15%	25.00%	39
+SEK	57.50%	48.94%	52.87%	47
+
+The MEL class has only 10 test samples. Its metrics therefore have substantial uncertainty.
+
+SCC also shows weak precision and F1-score, indicating that further investigation of class imbalance and class-wise errors is necessary.
+
+8. Observations
+
+1. Fine-tuned MobileNetV3-Large achieved the strongest results across all five reported validation metrics.
+2. Fine-tuning improved validation accuracy by 2.77 percentage points over the Large baseline.
+3. Fine-tuning improved validation macro F1 by 2.90 percentage points.
+4. EfficientNet-B0 achieved 59.56% validation accuracy and 52.38% macro F1.
+5. The selected Large fine-tuned checkpoint achieved 57.39% accuracy on the held-out test set.
+6. MEL and SCC remain challenging classes.
+7. Validation and held-out test results differ, highlighting the need to evaluate generalization carefully.
+
+9. Generated Artifacts
+
+Important experiment artifacts are stored under:
+
+* ml/outputs/mobilenet_v3_large/
+* ml/outputs/mobilenet_v3_large_finetuned/
+* ml/outputs/efficientnet_b0/
+* ml/outputs/mobilenet_comparison/
+* ml/outputs/reports/
+
+Selected checkpoint:
+
+ml/checkpoints/mobilenet/best_mobilenet_v3_large_finetuned.pth
+
+Held-out test metrics:
+
+ml/outputs/mobilenet_v3_large_finetuned/test_metrics.json
+
+10. Limitations
+
+* Experiments use PAD-UFES-20 and its patient-grouped partitions.
+* External dataset validation has not been conducted.
+* MEL has limited representation in the held-out test set.
 * SCC performance remains limited.
-* The dataset may not represent the full diversity of real-world skin images.
-* No external clinical validation has been conducted.
-* Test results from the original baseline experiment must not be interpreted as an independent comparison of all three models.
+* Validation performance does not establish clinical reliability.
+* The three-model comparison is based on validation metrics.
+* Only the selected fine-tuned Large checkpoint has the reported held-out test evaluation in this report.
+* No clinical validation has been performed.
 
-## **10\. Conclusion**
+11. Conclusion
 
-Phase 5 successfully implemented and compared three transfer-learning experiments.
-EfficientNet-B0 achieved 61.22% validation accuracy, while MobileNetV3-Small baseline achieved better macro recall and weighted F1.
-MobileNetV3-Small is retained as the preferred research baseline, and EfficientNet-B0 remains an alternative architecture for further investigation.
-DermAI is an academic research and screening-support project, not an autonomous diagnostic system.
+Phase 5 evaluated MobileNetV3-Large baseline, fine-tuned MobileNetV3-Large and EfficientNet-B0.
+
+Fine-tuned MobileNetV3-Large achieved the strongest validation metrics among these three experiments and was selected for the current backend inference workflow.
+
+The selected checkpoint achieved 57.39% accuracy and 51.02% macro F1 on the held-out test partition.
+
+DermAI remains an academic research prototype. It is not clinically validated and is not intended to provide medical diagnosis or treatment decisions.

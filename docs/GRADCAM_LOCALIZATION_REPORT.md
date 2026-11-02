@@ -1,144 +1,144 @@
-# DermAI - Grad-CAM Localization Evaluation
+DermAI — Grad-CAM Localization Evaluation
 
-## 1. Objective
+1. Objective
 
-To investigate which image regions influence the predictions
-of the trained MobileNetV3-Small classification model using
-Gradient-weighted Class Activation Mapping (Grad-CAM).
+This report documents the Grad-CAM explainability prototype developed for DermAI.
 
-## 2. Dataset and Model
+Gradient-weighted Class Activation Mapping (Grad-CAM) is used to visualize image regions that contribute to a model’s class prediction.
 
-- Dataset: PAD-UFES-20
-- Dataset partition: Fold 1 held-out test set
-- Model: MobileNetV3-Small baseline
-- Input resolution: 224 x 224 RGB
-- Number of visualized samples: 6
-- Samples selected: One per diagnostic class
-- Target layer: model.features[-1]
+The existing six-image visualization experiment was generated using the MobileNetV3-Small checkpoint.
 
-## 3. Prediction Results
+The current backend Grad-CAM service uses the model-loading workflow associated with the selected MobileNetV3-Large fine-tuned checkpoint. These two implementations and their results must be distinguished.
 
-| Actual Class | Predicted Class | Confidence |
-|---|---|---:|
-| ACK | ACK | 67.13% |
-| BCC | BCC | 63.89% |
-| MEL | BCC | 25.97% |
-| NEV | NEV | 46.65% |
-| SCC | BCC | 38.72% |
-| SEK | SEK | 34.75% |
+2. Dataset and Historical Visualization Model
 
-Correct predictions: 4/6.
+* Dataset: PAD-UFES-20
+* Dataset partition: Fold 1 held-out test set
+* Historical visualization model: MobileNetV3-Small
+* Input resolution: 224 × 224 RGB
+* Number of visualized samples: 6
+* Samples selected: One per diagnostic class
+* Target layer: model.features[-1]
 
-These results describe only the six selected examples and
-must not be interpreted as overall model performance.
+The historical visualization generator references:
 
-## 4. Qualitative Localization Observations
+ml/checkpoints/mobilenet/best_mobilenet_v3_small.pth
 
-### ACK
-The strongest activation was concentrated over the visible
-lesion/marking region. This was the cleanest observed example.
+Therefore, the six saved visualizations described in this report belong to the Small checkpoint experiment.
 
-### BCC
-The strongest hotspots appeared near the right edge and
-bottom-left region. Only a smaller activation was observed
-near the central lesion area. This may indicate attention
-to surrounding skin texture or image context.
+3. Historical Prediction Results
 
-### MEL
-Activation was concentrated near the lesion centre.
-However, the model predicted BCC instead of MEL, suggesting
-that attention to the relevant region does not guarantee
-correct classification.
+Actual Class	Predicted Class	Confidence
+ACK	ACK	67.13%
+BCC	BCC	63.89%
+MEL	BCC	25.97%
+NEV	NEV	46.65%
+SCC	BCC	38.72%
+SEK	SEK	34.75%
 
-### NEV
-Most activation was associated with the lesion, with a
-smaller additional hotspot in the background.
+Correct predictions: 4 out of 6.
 
-### SCC
-Activation covered part of the area to the left and above
-the lesion, but did not fully cover its central and right
-regions. The model predicted BCC instead of SCC.
+These results describe only six selected examples. They are not overall classification metrics.
 
-### SEK
-The main hotspot was located over the lesion, with an
-additional activation blob in the upper-left background.
+4. Qualitative Localization Observations
 
-## 5. Summary
+ACK
 
-| Class | Observed Focus | Prediction |
-|---|---|---|
-| ACK | Lesion | Correct |
-| BCC | Mostly background/context | Correct |
-| MEL | Lesion centre | Incorrect |
-| NEV | Lesion and some background | Correct |
-| SCC | Partial lesion region | Incorrect |
-| SEK | Lesion and some background | Correct |
+The strongest activation was concentrated over the visible lesion/marking region. This was the cleanest observed example.
 
-## 6. Limitations
+BCC
 
-- Only six examples were visually inspected.
-- The observations are qualitative and do not establish
-  localization accuracy.
-- No ground-truth bounding boxes, segmentation masks,
-  polygons or pixel-level lesion annotations were identified
-  in the inspected local dataset files.
-- Dice, IoU and bounding-box localization metrics therefore
-  cannot be calculated reliably.
-- Grad-CAM highlights class-discriminative model activations;
-  it does not produce verified lesion boundaries.
-- Background activation may indicate reliance on contextual
-  image features, but six examples are insufficient to prove
-  shortcut learning.
-- Confidence values are model output probabilities and are
-  not necessarily calibrated measures of certainty.
+The strongest hotspots appeared near the right edge and bottom-left region. A smaller activation was observed near the central lesion area. This may indicate attention to surrounding skin texture or image context.
 
-## 7. Integration with Classification Workflow
+MEL
 
-The localization prototype uses the existing trained
-MobileNetV3-Small checkpoint.
+Activation was concentrated near the lesion centre. However, the model predicted BCC instead of MEL. This illustrates that attention to a relevant image region does not guarantee correct classification.
 
-Workflow:
+NEV
 
-1. Load and resize the input image to 224 x 224 RGB.
-2. Apply the same ImageNet normalization used during training.
-3. Obtain six-class classification logits.
-4. Generate a Grad-CAM heatmap from the final feature block.
-5. Resize the heatmap and overlay it on the original image.
-6. Display the predicted class, confidence and activation map.
+Most activation was associated with the lesion, with a smaller additional hotspot in the background.
 
-The visualization can accompany the classification output
-as an experimental explainability component.
+SCC
 
-It must not be interpreted as a confirmed lesion boundary
-or used as independent medical evidence.
+Activation covered part of the area to the left and above the lesion, but did not fully cover its central and right regions. The model predicted BCC instead of SCC.
 
-## 8. Conclusion
+SEK
 
-A Grad-CAM prototype was successfully implemented for
-MobileNetV3-Small and generated six visual examples,
-covering all six PAD-UFES-20 diagnostic classes.
+The main hotspot was located over the lesion, with an additional activation region in the upper-left background.
 
-The qualitative review showed lesion-focused activation
-in several examples, alongside background activation and
-partial lesion coverage in others.
+5. Summary
 
-The results demonstrate the feasibility of adding
-class-discriminative visual explanations to DermAI's
-classification workflow. However, reliable lesion
-localization evaluation requires annotated bounding boxes
-or segmentation masks and a larger, systematic assessment.
+Class	Observed Focus	Prediction
+ACK	Lesion	Correct
+BCC	Mostly background/context	Correct
+MEL	Lesion centre	Incorrect
+NEV	Lesion and some background	Correct
+SCC	Partial lesion region	Incorrect
+SEK	Lesion and some background	Correct
 
-DermAI remains a research prototype and is not a
-clinically validated diagnostic system.
+6. Current Backend Integration
 
-## 9. Generated Artifacts
+The current DermAI backend includes a Grad-CAM service that uses the selected model-loading workflow.
 
-- ml/src/explainability/gradcam.py
-- ml/src/explainability/generate_visualizations.py
-- ml/outputs/gradcam/gradcam_results.csv
-- ml/outputs/gradcam/gradcam_1_ACK.png
-- ml/outputs/gradcam/gradcam_2_BCC.png
-- ml/outputs/gradcam/gradcam_3_MEL.png
-- ml/outputs/gradcam/gradcam_4_NEV.png
-- ml/outputs/gradcam/gradcam_5_SCC.png
-- ml/outputs/gradcam/gradcam_6_SEK.png
+The current selected classification checkpoint is:
+
+ml/checkpoints/mobilenet/best_mobilenet_v3_large_finetuned.pth
+
+The Grad-CAM service imports the inference model loader and preprocessing workflow rather than relying on the historical standalone Small-model visualization script.
+
+The current workflow includes:
+
+1. Load the selected model and execution device.
+2. Decode and preprocess the uploaded image.
+3. Apply the model’s expected RGB and ImageNet normalization.
+4. Obtain classification outputs.
+5. Generate class-discriminative activation maps.
+6. Resize and overlay the heatmap on the input image.
+7. Return the visualization alongside the classification workflow.
+
+The existing six saved visualizations remain historical Small-model artifacts. They should not be relabelled as Large-model visualizations.
+
+7. Limitations
+
+* Only six historical examples were visually inspected.
+* The observations are qualitative and do not establish localization accuracy.
+* No ground-truth bounding boxes, segmentation masks, polygons or pixel-level lesion annotations were identified in the inspected local dataset files.
+* Dice, IoU and bounding-box localization metrics cannot therefore be calculated reliably.
+* Grad-CAM highlights class-discriminative model activations; it does not produce verified lesion boundaries.
+* Background activation may indicate reliance on contextual image features, but six examples are insufficient to prove shortcut learning.
+* Confidence values are model output probabilities and are not necessarily calibrated measures of certainty.
+* No clinical localization validation has been conducted.
+
+8. Interpretation and Safety
+
+Grad-CAM is an experimental explainability technique.
+
+A highlighted region does not prove that the model has identified the medically relevant lesion area.
+
+The heatmap must not be interpreted as a confirmed lesion boundary, segmentation mask or independent medical evidence.
+
+Classification confidence and activation intensity must not be treated as diagnostic certainty.
+
+9. Generated Artifacts
+
+* ml/src/explainability/gradcam.py
+* ml/src/explainability/generate_visualizations.py
+* ml/outputs/gradcam/gradcam_results.csv
+* ml/outputs/gradcam/gradcam_1_ACK.png
+* ml/outputs/gradcam/gradcam_2_BCC.png
+* ml/outputs/gradcam/gradcam_3_MEL.png
+* ml/outputs/gradcam/gradcam_4_NEV.png
+* ml/outputs/gradcam/gradcam_5_SCC.png
+* ml/outputs/gradcam/gradcam_6_SEK.png
+
+10. Conclusion
+
+The Grad-CAM prototype generated six historical visualizations using the MobileNetV3-Small checkpoint, covering all six PAD-UFES-20 diagnostic classes.
+
+The qualitative review showed lesion-focused activation in several examples, alongside background activation and partial lesion coverage in others.
+
+The current backend also integrates Grad-CAM with the selected MobileNetV3-Large model-loading workflow. However, the existing six saved visualizations remain Small-model results.
+
+Reliable lesion localization evaluation requires annotated bounding boxes or segmentation masks and a larger systematic assessment.
+
+DermAI remains an academic research prototype and is not a clinically validated diagnostic system.
