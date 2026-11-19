@@ -5,12 +5,12 @@
 |---|---|
 | Architecture / checkpoint | MobileNetV3-Large, `best_mobilenet_v3_large_finetuned.pth` (epoch 9) |
 | Pretrained | Yes (ImageNet) |
-| Frozen / trainable | Baseline: backbone frozen, head trained. Fine-tune: see `finetune_mobilenet_v3_large.py` (unfrozen layers: verify in script) |
-| Learning rate | 1e-4 (config.yaml); fine-tune LR: verify in script |
+| Frozen / trainable | Backbone frozen by default; layers from `features[13]` onward (`UNFREEZE_FROM = 13`) and the classifier are trainable in the fine-tuning script |
+| Learning rate | Fine-tuning: 1e-5 (`LEARNING_RATE`); initial head training: 1e-4 (`ml/config.yaml`) |
 | Batch size | 16 |
-| Optimizer | Adam |
+| Optimizer | Adam (`finetune_mobilenet_v3_large.py`) |
 | Weight decay | 1e-4 |
-| Epochs | up to 20 (config.yaml); best at epoch 9 |
+| Epochs | Max 20 (`EPOCHS`); early stopping patience 5; best checkpoint at epoch 9 |
 | Loss | Weighted cross-entropy (weights from training split only) |
 | Scheduler / early stopping | ReduceLROnPlateau (patience 2), early stopping (patience 5) on val loss |
 | Split | Patient-grouped: 1477 train / 361 val / 460 test |
@@ -23,15 +23,15 @@
 Cannot be completed from this repository alone. Training-history files and curves live under `ml/outputs/` (not committed). Compare train vs validation loss from those files before stating a conclusion. The drop from validation (61.22%) to test (57.39%) accuracy is small and not by itself evidence of overfitting.
 
 ## 3. Proposed learning-rate experiments
-Same architecture (MobileNetV3-Large), same split, same seed, same augmentation, same weighted loss. Only the learning rate changes. Experiment type: **fine-tune head plus last backbone block** (identical across runs). The test split is not used for tuning.
+Same architecture (MobileNetV3-Large), same split, same seed (42), same augmentation, same weighted loss, same `UNFREEZE_FROM = 13`, same batch size 16. Only `LEARNING_RATE` changes. The test split is not used for tuning; selection uses validation loss and validation macro F1.
 
-| Experiment ID | Checkpoint start | LR | Frozen / unfrozen | Split | Seed | Batch | Optimizer | Epochs | Metrics |
+| Experiment ID | Start | LR | Frozen / unfrozen | Split | Seed | Batch | Optimizer | Epochs | Metrics |
 |---|---|---|---|---|---|---|---|---|---|
-| LR-1 | ImageNet pretrained | 1e-3 | Backbone frozen except last block + head | fold_1 | 42 | 16 | Adam, wd 1e-4 | 20 (early stop 5) | val loss, val acc, val macro F1 |
-| LR-2 | ImageNet pretrained | 1e-4 | same | fold_1 | 42 | 16 | Adam, wd 1e-4 | 20 (early stop 5) | same |
-| LR-3 | ImageNet pretrained | 1e-5 | same | fold_1 | 42 | 16 | Adam, wd 1e-4 | 20 (early stop 5) | same |
+| LR-1 | Head-trained checkpoint | 1e-3 | features[13:] + classifier | fold_1 | 42 | 16 | same as current | 20 (early stop 5) | val loss, val acc, val macro F1 |
+| LR-2 | Head-trained checkpoint | 1e-4 | same | fold_1 | 42 | 16 | same | 20 (early stop 5) | same |
+| LR-3 (current, reference) | Head-trained checkpoint | 1e-5 | same | fold_1 | 42 | 16 | same | 20 (early stop 5) | same; already run (best epoch 9) |
 
-Why each: 1e-3 tests faster adaptation but risks unstable fine-tuning; 1e-4 is the current reference; 1e-5 tests slower, more conservative updates that may reduce forgetting of pretrained features. These are candidates, not expected optimal values. Original checkpoint is preserved; new runs save to separate filenames.
+Why each: 1e-5 is the existing fine-tuning setting and serves as the reference. 1e-4 tests faster adaptation of the unfrozen layers. 1e-3 is a deliberately aggressive candidate that may destabilise pretrained features. These are candidates, not expected optimal values. The original checkpoint is preserved; new runs must save to new filenames. LR-1 and LR-2 have not been run.
 
 ## 4. Blockers
 Training logs/checkpoints are not committed; runs require the local dataset and Apple MPS/GPU.
