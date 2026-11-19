@@ -5,7 +5,7 @@
 |---|---|
 | Architecture / checkpoint | MobileNetV3-Large, `best_mobilenet_v3_large_finetuned.pth` (epoch 9) |
 | Pretrained | Yes (ImageNet) |
-| Frozen / trainable | Backbone frozen by default; layers from `features[13]` onward (`UNFREEZE_FROM = 13`) and the classifier are trainable in the fine-tuning script |
+| Frozen / trainable | Backbone frozen by default; only `model.features[13:]` (`UNFREEZE_FROM = 13`) and the final classification layer `model.classifier[3]` are trainable; all other parameters are frozen in the fine-tuning script |
 | Learning rate | Fine-tuning: 1e-5 (`LEARNING_RATE`); initial head training: 1e-4 (`ml/config.yaml`) |
 | Batch size | 16 |
 | Optimizer | Adam (`finetune_mobilenet_v3_large.py`) |
@@ -27,7 +27,7 @@ Same architecture (MobileNetV3-Large), same split, same seed (42), same augmenta
 
 | Experiment ID | Start | LR | Frozen / unfrozen | Split | Seed | Batch | Optimizer | Epochs | Metrics |
 |---|---|---|---|---|---|---|---|---|---|
-| LR-1 | Head-trained checkpoint | 1e-3 | features[13:] + classifier | fold_1 | 42 | 16 | same as current | 20 (early stop 5) | val loss, val acc, val macro F1 |
+| LR-1 | Head-trained checkpoint | 1e-3 | features[13:] + classifier[3] | fold_1 | 42 | 16 | same as current | 20 (early stop 5) | val loss, val acc, val macro F1 |
 | LR-2 | Head-trained checkpoint | 1e-4 | same | fold_1 | 42 | 16 | same | 20 (early stop 5) | same |
 | LR-3 (current, reference) | Head-trained checkpoint | 1e-5 | same | fold_1 | 42 | 16 | same | 20 (early stop 5) | same; already run (best epoch 9) |
 
