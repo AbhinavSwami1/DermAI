@@ -123,3 +123,24 @@ export async function apiRequestBlob(endpoint: string): Promise<Blob> {
 
   return response.blob();
 }
+
+// Authenticated GET returning a Blob (images, report downloads)
+export async function apiGetBlob(endpoint: string): Promise<Blob> {
+  const headers = new Headers();
+
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "GET",
+    headers,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return response.blob();
+}

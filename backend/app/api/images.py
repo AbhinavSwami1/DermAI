@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -60,3 +60,16 @@ def get_image_quality(
             "Not clinically validated and not for diagnosis or treatment."
         ),
     }
+
+
+@router.get("/images/{image_id}/file")
+def get_image_file(
+    image_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the original stored image (owner only)."""
+    from app.api.predictions import get_owned_image, get_safe_image_bytes
+
+    record = get_owned_image(image_id, current_user, db)
+    return Response(content=get_safe_image_bytes(record), media_type=record.mime_type)

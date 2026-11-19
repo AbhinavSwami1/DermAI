@@ -51,6 +51,8 @@ function formatDate(value: string) {
   });
 }
 
+import ReportActions from "./ReportActions";
+
 export default function PredictionHistory() {
   const [history, setHistory] =
     useState<PredictionHistoryResponse | null>(null);
@@ -315,6 +317,8 @@ export default function PredictionHistory() {
                   </div>
                 )}
               </details>
+
+              <ReportActions predictionId={item.prediction_id} />
 
               <p className="mt-4 break-all text-[10px] text-slate-400">
                 Prediction ID: {item.prediction_id}

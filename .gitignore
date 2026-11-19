@@ -55,3 +55,6 @@ build/
 # IDE
 .vscode/
 .idea/
+
+dermai_report_*.pdf
+*.save

@@ -38,6 +38,7 @@ from app.services.inference_service import (
     predict_image,
 )
 from app.services.gradcam_service import generate_gradcam
+from app.services.prediction_utils import top_n_predictions
 
 
 router = APIRouter(
@@ -262,6 +263,7 @@ def get_prediction_history(
             model_version=model.version,
             architecture=model.architecture,
             created_at=prediction.created_at,
+            top_predictions=top_n_predictions(prediction.class_scores, 3),
         )
         for prediction, image, case, model in records
     ]
@@ -362,6 +364,7 @@ def create_prediction(
             status=prediction.status,
             created_at=prediction.created_at,
             disclaimer=DISCLAIMER,
+            top_predictions=top_n_predictions(prediction.class_scores, 3),
         )
 
     except SQLAlchemyError:

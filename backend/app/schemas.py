@@ -108,6 +108,7 @@ class PredictionResponse(BaseModel):
     status: str
     created_at: datetime
     disclaimer: str
+    top_predictions: list[dict] | None = None
 
 # -------------------------
 # PREDICTION HISTORY SCHEMAS
@@ -130,6 +131,7 @@ class PredictionHistoryItem(BaseModel):
     architecture: str
 
     created_at: datetime
+    top_predictions: list[dict] | None = None
 
 
 class PredictionHistoryResponse(BaseModel):

@@ -11,6 +11,9 @@ from slowapi.errors import RateLimitExceeded
 from app.core.rate_limit import limiter
 from app.api.predictions import router as predictions_router
 from app.api.images import router as images_router
+from app.api.reports import router as reports_router
+from app.api.dashboards import router as dashboards_router
+from app.api.insights import router as insights_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -58,3 +61,6 @@ app.include_router(auth_router)
 app.include_router(roles_router)
 app.include_router(predictions_router)
 app.include_router(images_router)
+app.include_router(reports_router)
+app.include_router(dashboards_router)
+app.include_router(insights_router)

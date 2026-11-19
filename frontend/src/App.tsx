@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import Login from "./components/Login";
 import PredictionHistory from "./components/PredictionHistory";
+import ReportActions from "./components/ReportActions";
+import CompareAnalyses from "./components/CompareAnalyses";
+import StaffDashboard from "./components/StaffDashboard";
+import ModelInsights from "./components/ModelInsights";
 
 import {
   apiRequest,
@@ -12,11 +16,8 @@ import {
 import {
   Activity,
   ArrowRight,
-  Bell,
   BrainCircuit,
   ChartNoAxesCombined,
-  ChevronDown,
-  CircleHelp,
   Clock3,
   FileImage,
   FlaskConical,
@@ -24,7 +25,6 @@ import {
   LayoutDashboard,
   LogOut,
   Microscope,
-  Settings,
   ShieldCheck,
   Sparkles,
   Upload,
@@ -45,12 +45,14 @@ type ImageQuality = {
   disclaimer: string;
 };
 
-type ActiveView = "dashboard" | "history" | "insights";
+type ActiveView = "dashboard" | "history" | "insights" | "compare" | "staff";
 
 const navigation = [
   { label: "Dashboard", icon: LayoutDashboard, view: "dashboard" },
   { label: "New Analysis", icon: Microscope, view: "dashboard" },
   { label: "Analysis History", icon: History, view: "history" },
+  { label: "Compare Analyses", icon: Clock3, view: "compare" },
+  { label: "Staff Dashboards", icon: Users, view: "staff" },
   {
     label: "Research Insights",
     icon: ChartNoAxesCombined,
@@ -58,32 +60,6 @@ const navigation = [
   },
 ] as const;
 
-const researchStats = [
-  {
-    label: "Total Images",
-    value: "2,298",
-    change: "PAD-UFES-20 dataset",
-    icon: FileImage,
-  },
-  {
-    label: "Test Accuracy",
-    value: "57.39%",
-    change: "Held-out test set (460 images)",
-    icon: BrainCircuit,
-  },
-  {
-    label: "Skin Conditions",
-    value: "06",
-    change: "Supported classes",
-    icon: Activity,
-  },
-  {
-    label: "Model Version",
-    value: "Epoch 9",
-    change: "MobileNetV3-Large Fine-tuned",
-    icon: FlaskConical,
-  },
-];
 
 const conditions = [
   { code: "ACK", name: "Actinic Keratosis", count: 845 },
@@ -100,6 +76,9 @@ function App() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const [activeView, setActiveView] = useState<ActiveView>("dashboard");
+  const [currentUser, setCurrentUser] = useState<{ full_name: string; email: string } | null>(null);
+  const [totalAnalyses, setTotalAnalyses] = useState<number | null>(null);
+  const [insights, setInsights] = useState<any>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -151,6 +130,22 @@ function App() {
       if (gradcamUrl) URL.revokeObjectURL(gradcamUrl);
     };
   }, [previewUrl, gradcamUrl]);
+
+  // Load real values for the dashboard
+  useEffect(() => {
+    if (!authenticated) return;
+    apiRequest<{ full_name: string; email: string }>("/users/me").then(setCurrentUser).catch(() => {});
+    apiRequest<{ total: number }>("/predictions/history?page=1&page_size=1").then((d) => setTotalAnalyses(d.total)).catch(() => {});
+    apiRequest<any>("/insights/model-metrics").then(setInsights).catch(() => {});
+  }, [authenticated, prediction]);
+
+  const testAcc = insights?.test_metrics?.accuracy ?? insights?.test_metrics?.test_accuracy;
+  const researchStats = [
+    { label: "Your Analyses", value: totalAnalyses ?? "-", change: "Saved in your history", icon: FileImage },
+    { label: "Test Accuracy", value: typeof testAcc === "number" ? (testAcc <= 1 ? (testAcc * 100).toFixed(2) + "%" : String(testAcc)) : "Not available", change: "Held-out test set (saved evaluation)", icon: BrainCircuit },
+    { label: "Supported Classes", value: insights?.num_classes ?? "-", change: (insights?.class_names ?? []).join(", "), icon: Activity },
+    { label: "Model Version", value: insights?.model_version ?? "-", change: "Currently deployed model", icon: FlaskConical },
+  ];
 
   // Navigation handler
   function handleNavigation(view: ActiveView, label?: string) {
@@ -380,37 +375,6 @@ async function handleAnalyze() {
           </nav>
         </div>
 
-        <div className="px-5 pt-9">
-          <p className="mb-4 px-3 text-[10px] font-bold uppercase tracking-[2px] text-slate-500">
-            Management
-          </p>
-
-          <nav className="space-y-2">
-            <button
-              disabled
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-400"
-            >
-              <Users size={19} />
-              Research Team
-            </button>
-
-            <button
-              disabled
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-400"
-            >
-              <Settings size={19} />
-              Settings
-            </button>
-
-            <button
-              disabled
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-400"
-            >
-              <CircleHelp size={19} />
-              Help & Support
-            </button>
-          </nav>
-        </div>
 
         <div className="mt-auto hidden p-5 lg:block">
           <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
@@ -433,16 +397,11 @@ async function handleAnalyze() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold">Researcher</p>
+              <p className="text-sm font-semibold">{currentUser?.full_name ?? "Signed in"}</p>
               <p className="text-xs text-slate-500">
-                Research Workspace
+                {currentUser?.email ?? ""}
               </p>
             </div>
-
-            <ChevronDown
-              className="ml-auto text-slate-500"
-              size={17}
-            />
           </div>
         </div>
       </aside>
@@ -461,7 +420,11 @@ async function handleAnalyze() {
                 ? "Analysis History"
                 : activeView === "insights"
                   ? "Research Insights"
-                  : "Dashboard"}
+                  : activeView === "compare"
+                    ? "Compare Analyses"
+                    : activeView === "staff"
+                      ? "Staff Dashboards"
+                      : "Dashboard"}
             </h2>
           </div>
 
@@ -476,15 +439,6 @@ async function handleAnalyze() {
                 {loggingOut ? "Logging out..." : "Logout"}
               </span>
             </button>
-
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative rounded-xl border border-slate-200 p-3 text-slate-500 hover:bg-slate-50"
-            >
-              <Bell size={19} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan-500" />
-            </button>
           </div>
         </header>
 
@@ -492,187 +446,9 @@ async function handleAnalyze() {
           {/* Analysis History */}
           {activeView === "history" && <PredictionHistory />}
 
-          {/* Research Insights */}
-          {/* Research Insights */}
-{activeView === "insights" && (
-  <section className="space-y-6">
-    {/* Header */}
-    <div>
-      <div className="flex items-center gap-3">
-        <ChartNoAxesCombined className="text-cyan-700" size={27} />
-        <h2 className="text-2xl font-bold text-slate-900">
-          Research Insights
-        </h2>
-      </div>
-      <p className="mt-2 text-sm text-slate-500">
-        Experimental performance and dataset analysis of the DERMAI
-        research model.
-      </p>
-    </div>
-
-    {/* Model performance */}
-    <div>
-      <h3 className="mb-4 text-lg font-bold text-slate-900">
-        Model Performance
-      </h3>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: "Validation Accuracy",
-            value: "61.22%",
-            description: "Validation dataset",
-          },
-          {
-            label: "Test Accuracy",
-            value: "57.39%",
-            description: "Held-out test set · 460 images",
-          },
-          {
-            label: "Macro F1-Score",
-            value: "51.02%",
-            description: "Equal weight per class",
-          },
-          {
-            label: "Weighted F1-Score",
-            value: "60.12%",
-            description: "Weighted by class support",
-          },
-        ].map((metric) => (
-          <div
-            key={metric.label}
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <p className="text-sm font-medium text-slate-500">
-              {metric.label}
-            </p>
-            <p className="mt-3 text-3xl font-bold text-cyan-800">
-              {metric.value}
-            </p>
-            <p className="mt-2 text-xs text-slate-400">
-              {metric.description}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Dataset distribution */}
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-6">
-        <h3 className="text-lg font-bold text-slate-900">
-          Dataset Class Distribution
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">
-          PAD-UFES-20 · 2,298 images across six diagnostic classes
-        </p>
-      </div>
-
-      <div className="space-y-5">
-        {conditions.map((condition) => {
-          const percentage =
-            (condition.count / 2298) * 100;
-
-          return (
-            <div key={condition.code}>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="font-semibold text-slate-800">
-                    {condition.code}
-                  </span>
-                  <span className="ml-2 text-sm text-slate-500">
-                    {condition.name}
-                  </span>
-                </div>
-
-                <span className="text-sm font-semibold text-slate-700">
-                  {condition.count.toLocaleString()} ({percentage.toFixed(1)}%)
-                </span>
-              </div>
-
-              <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-cyan-600 transition-all"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <p className="mt-6 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
-        The dataset has class imbalance. MEL has substantially fewer
-        samples than the other diagnostic classes, which may affect
-        model performance.
-      </p>
-    </div>
-
-    {/* Model configuration */}
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-bold text-slate-900">
-        Model Configuration
-      </h3>
-
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {[
-          ["Architecture", "MobileNetV3-Large"],
-          ["Training Strategy", "Fine-tuned Transfer Learning"],
-          ["Selected Checkpoint", "Epoch 9"],
-          ["Input Dimensions", "224 × 224 pixels"],
-          ["Normalization", "ImageNet Mean / Std"],
-          ["Output Classes", "6"],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-xl bg-slate-50 p-4"
-          >
-            <p className="text-xs font-medium text-slate-500">
-              {label}
-            </p>
-            <p className="mt-2 text-sm font-bold text-slate-800">
-              {value}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Research limitations */}
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-      <h3 className="text-lg font-bold text-amber-900">
-        Research Limitations
-      </h3>
-
-      <ul className="mt-4 list-inside list-disc space-y-2 text-sm leading-6 text-amber-900">
-        <li>
-          The dataset contains an imbalanced distribution of diagnostic
-          classes.
-        </li>
-        <li>
-          MEL has only 52 images in the PAD-UFES-20 dataset.
-        </li>
-        <li>
-          Model performance is experimental and has not been clinically
-          validated.
-        </li>
-        <li>
-          Grad-CAM provides an attention visualization, not verified
-          lesion segmentation.
-        </li>
-        <li>
-          Predictions must not be used for medical diagnosis or
-          treatment decisions.
-        </li>
-      </ul>
-    </div>
-
-    <p className="text-center text-xs leading-5 text-slate-400">
-      DERMAI Research Prototype · Experimental results · Not for
-      clinical use
-    </p>
-  </section>
-)}
+          {activeView === "compare" && <CompareAnalyses />}
+          {activeView === "staff" && <StaffDashboard />}
+          {activeView === "insights" && <ModelInsights />}
 
           {/* Dashboard */}
           {activeView === "dashboard" && (
@@ -969,6 +745,30 @@ async function handleAnalyze() {
                           ))}
                         </div>
 
+                        {Array.isArray(prediction.top_predictions) && (
+                          <div className="mt-5">
+                            <h5 className="text-sm font-semibold text-slate-800">
+                              Top-3 predictions
+                            </h5>
+                            <ol className="mt-2 space-y-1 text-sm text-slate-700">
+                              {prediction.top_predictions.map(
+                                (t: { rank: number; class_name: string; score: number }) => (
+                                  <li key={t.rank}>
+                                    {t.class_name} ({(t.score * 100).toFixed(2)}%)
+                                  </li>
+                                ),
+                              )}
+                            </ol>
+                          </div>
+                        )}
+                        <p className="mt-3 text-xs text-slate-500">
+                          Analysis time: {new Date(prediction.created_at).toLocaleString()}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Scores are model outputs, not clinically validated probabilities.
+                        </p>
+                        <ReportActions predictionId={prediction.prediction_id} />
+
                         {/* Grad-CAM */}
                         {gradcamUrl && (
                           <div className="mt-6">
@@ -1063,7 +863,7 @@ async function handleAnalyze() {
                     </h3>
 
                     <p className="mt-1 text-xs text-slate-400">
-                      PAD-UFES-20 · 2,298 images
+                      PAD-UFES-20 dataset audit (static reference)
                     </p>
                   </div>
 
