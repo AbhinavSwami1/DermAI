@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -41,6 +41,15 @@ class CaseResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    clinical_notes: str | None = None
+    follow_up_date: date | None = None
+
+
+class CaseNotesUpdate(BaseModel):
+    """Replaces both fields. Do not store patient-identifiable data."""
+
+    clinical_notes: str | None = Field(default=None, max_length=2000)
+    follow_up_date: date | None = None
 
 
 class ImageResponse(BaseModel):

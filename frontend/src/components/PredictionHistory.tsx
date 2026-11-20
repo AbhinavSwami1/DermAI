@@ -52,6 +52,7 @@ function formatDate(value: string) {
 }
 
 import ReportActions from "./ReportActions";
+import CaseNotes from "./CaseNotes";
 
 export default function PredictionHistory() {
   const [history, setHistory] =
@@ -61,6 +62,9 @@ export default function PredictionHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const pageSize = 10;
 
   const loadHistory = useCallback(async (requestedPage: number) => {
@@ -69,7 +73,9 @@ export default function PredictionHistory() {
 
     try {
       const result = await apiRequest<PredictionHistoryResponse>(
-        `/predictions/history?page=${requestedPage}&page_size=${pageSize}`,
+        `/predictions/history?page=${requestedPage}&page_size=${pageSize}` +
+          (dateFrom ? `&date_from=${dateFrom}` : "") +
+          (dateTo ? `&date_to=${dateTo}` : ""),
       );
 
       setHistory(result);
@@ -82,7 +88,7 @@ export default function PredictionHistory() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     loadHistory(page);
@@ -90,6 +96,25 @@ export default function PredictionHistory() {
 
   return (
     <section className="space-y-6">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <label className="text-xs text-slate-600">
+          From
+          <input type="date" value={dateFrom} onChange={(e) => { setPage(1); setDateFrom(e.target.value); }}
+            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+        </label>
+        <label className="text-xs text-slate-600">
+          To
+          <input type="date" value={dateTo} onChange={(e) => { setPage(1); setDateTo(e.target.value); }}
+            className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+        </label>
+        {(dateFrom || dateTo) && (
+          <button type="button" onClick={() => { setPage(1); setDateFrom(""); setDateTo(""); }}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+            Clear filter
+          </button>
+        )}
+        <p className="text-[11px] text-slate-400">Dates use UTC day boundaries.</p>
+      </div>
       {/* Page heading */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
@@ -319,6 +344,7 @@ export default function PredictionHistory() {
               </details>
 
               <ReportActions predictionId={item.prediction_id} />
+              <CaseNotes caseId={item.case_id} />
 
               <p className="mt-4 break-all text-[10px] text-slate-400">
                 Prediction ID: {item.prediction_id}

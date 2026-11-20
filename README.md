@@ -23,3 +23,6 @@ Place the checkpoint at `ml/checkpoints/mobilenet/best_mobilenet_v3_large_finetu
 
 ## Docs
 See `docs/` (status, dataset audit, model comparison, Grad-CAM, calibration, risk feasibility, LR plan, Week 7 checklist).
+
+## Docker
+See `docs/DOCKER_DEPLOYMENT.md`. Quick start: `cp .env.example .env`, set the two secrets, put the checkpoint in `ml/checkpoints/mobilenet/`, then `docker compose up --build` and open http://localhost:8080.

@@ -28,7 +28,7 @@ def test_sharp_image_returns_valid_metrics():
     assert 0 <= result["brightness_mean"] <= 255
     assert 0 <= result["dark_pixel_percentage"] <= 100
     assert 0 <= result["bright_pixel_percentage"] <= 100
-    assert result["algorithm_version"] == "1.0.0"
+    assert result["algorithm_version"] == "1.1.0"
 
 
 def test_uniform_image_is_flagged_as_possibly_blurry():
@@ -38,7 +38,8 @@ def test_uniform_image_is_flagged_as_possibly_blurry():
 
     assert result["blur_score"] == 0
     assert "POSSIBLY_BLURRY" in result["quality_flags"]
-    assert result["quality_status"] == "REVIEW_REQUIRED"
+    # blur alone is a warning, not a block
+    assert result["quality_status"] == "WARNING"
 
 
 def test_dark_image_is_flagged():
@@ -48,6 +49,7 @@ def test_dark_image_is_flagged():
 
     assert "LOW_BRIGHTNESS" in result["quality_flags"]
     assert "HIGH_DARK_PIXEL_PERCENTAGE" in result["quality_flags"]
+    assert result["quality_status"] == "REVIEW_REQUIRED"
 
 
 def test_bright_image_is_flagged():

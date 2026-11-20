@@ -698,3 +698,47 @@ def test_prediction_history_rejects_invalid_pagination(client):
 
     assert invalid_page.status_code == 422
     assert invalid_page_size.status_code == 422
+
+
+def _warning_setup(client, db_session, tmp_path, monkeypatch):
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+    calls = []
+
+    def tracked(image_bytes):
+        calls.append(1)
+        return fake_prediction(image_bytes)
+
+    monkeypatch.setattr(predictions, "predict_image", tracked)
+    case_id, headers = create_test_case(client)
+    image_id = upload_test_image(client, case_id, headers)
+    assessment = get_quality_assessment(db_session, image_id)
+    assert assessment is not None
+    assessment.quality_status = "WARNING"
+    assessment.quality_flags = ["POSSIBLY_BLURRY"]
+    db_session.flush()
+    return image_id, headers, calls
+
+
+def test_prediction_requires_acknowledgement_for_quality_warning(
+    client, db_session, tmp_path, monkeypatch
+):
+    image_id, headers, calls = _warning_setup(client, db_session, tmp_path, monkeypatch)
+    response = client.post(f"/api/v1/predictions/{image_id}", headers=headers)
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "IMAGE_QUALITY_WARNING"
+    assert calls == []
+    assert db_session.query(Prediction).count() == 0
+
+
+def test_prediction_allowed_after_quality_warning_acknowledged(
+    client, db_session, tmp_path, monkeypatch
+):
+    image_id, headers, calls = _warning_setup(client, db_session, tmp_path, monkeypatch)
+    response = client.post(
+        f"/api/v1/predictions/{image_id}?acknowledge_quality_warning=true",
+        headers=headers,
+    )
+    assert response.status_code == 201
+    assert calls == [1]
+    assert db_session.query(Prediction).count() == 1

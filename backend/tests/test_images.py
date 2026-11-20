@@ -83,7 +83,7 @@ def test_owner_can_get_image_quality(
     assert data["image_id"] == image_id
     assert data["quality_status"] == "REVIEW_REQUIRED"
     assert "POSSIBLY_BLURRY" in data["quality_flags"]
-    assert data["algorithm_version"] == "1.0.0"
+    assert data["algorithm_version"] == "1.1.0"
     assert "Research-only" in data["disclaimer"]
 
 

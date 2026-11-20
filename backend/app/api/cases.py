@@ -2,12 +2,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models import Case, User
-from app.schemas import CaseResponse
+from app.schemas import CaseNotesUpdate, CaseResponse
 
 router = APIRouter(prefix="/api/v1", tags=["Cases"])
 
@@ -77,4 +78,45 @@ def get_case(
             detail="Case not found.",
         )
 
+    return case
+
+
+# UPDATE CLINICAL NOTES / FOLLOW-UP DATE — owner only
+@router.patch(
+    "/cases/{case_id}/notes",
+    response_model=CaseResponse,
+)
+def update_case_notes(
+    case_id: UUID,
+    payload: CaseNotesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    case = db.scalar(
+        select(Case).where(
+            Case.case_id == case_id,
+            Case.owner_id == current_user.user_id,
+        )
+    )
+
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        )
+
+    notes = (payload.clinical_notes or "").strip()
+    case.clinical_notes = notes or None
+    case.follow_up_date = payload.follow_up_date
+
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to save case notes.",
+        )
+
+    db.refresh(case)
     return case

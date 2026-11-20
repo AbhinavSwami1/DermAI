@@ -223,4 +223,4 @@ def test_upload_saves_image_quality_assessment(
     assert 0 <= assessment.bright_pixel_percentage <= 100
     assert assessment.quality_status == "REVIEW_REQUIRED"
     assert "POSSIBLY_BLURRY" in assessment.quality_flags
-    assert assessment.algorithm_version == "1.0.0"
+    assert assessment.algorithm_version == "1.1.0"

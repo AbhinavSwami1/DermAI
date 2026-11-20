@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 
 from app.api.upload import router as upload_router
@@ -14,6 +16,7 @@ from app.api.images import router as images_router
 from app.api.reports import router as reports_router
 from app.api.dashboards import router as dashboards_router
 from app.api.insights import router as insights_router
+from app.api.notifications import router as notifications_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -24,8 +27,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173",
+        ).split(",")
+        if origin.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -64,3 +71,4 @@ app.include_router(images_router)
 app.include_router(reports_router)
 app.include_router(dashboards_router)
 app.include_router(insights_router)
+app.include_router(notifications_router)

@@ -5,10 +5,23 @@ import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 
-ALGORITHM_VERSION = "1.0.0"
+ALGORITHM_VERSION = "1.1.0"
 
 # Preliminary research heuristics; these are not clinical thresholds.
-MIN_BLUR_SCORE = 100.0
+# Lowered from 100 after threshold validation (docs/IMAGE_QUALITY_VALIDATION.md):
+# 100 flagged 26.7% of untouched images; 40 flagged 6.7% with equal synthetic-blur detection.
+MIN_BLUR_SCORE = 40.0
+
+# Flags that only produce a warning the user may acknowledge. All other flags block prediction.
+WARNING_ONLY_FLAGS = {"POSSIBLY_BLURRY"}
+
+
+def _quality_status(flags: list[str]) -> str:
+    if not flags:
+        return "ACCEPTABLE"
+    if all(flag in WARNING_ONLY_FLAGS for flag in flags):
+        return "WARNING"
+    return "REVIEW_REQUIRED"
 MIN_BRIGHTNESS = 40.0
 MAX_BRIGHTNESS = 220.0
 MAX_DARK_PIXEL_PERCENTAGE = 50.0
@@ -84,9 +97,7 @@ def assess_image_quality(image_bytes: bytes) -> dict:
         "brightness_mean": brightness_mean,
         "dark_pixel_percentage": dark_percentage,
         "bright_pixel_percentage": bright_percentage,
-        "quality_status": (
-            "REVIEW_REQUIRED" if flags else "ACCEPTABLE"
-        ),
+        "quality_status": _quality_status(flags),
         "quality_flags": flags,
         "algorithm_version": ALGORITHM_VERSION,
     }

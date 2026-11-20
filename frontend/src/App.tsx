@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Login from "./components/Login";
 import PredictionHistory from "./components/PredictionHistory";
 import ReportActions from "./components/ReportActions";
+import NotificationBell from "./components/NotificationBell";
 import CompareAnalyses from "./components/CompareAnalyses";
 import StaffDashboard from "./components/StaffDashboard";
 import ModelInsights from "./components/ModelInsights";
@@ -81,6 +82,7 @@ function App() {
   const [insights, setInsights] = useState<any>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pendingImageId, setPendingImageId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -168,6 +170,8 @@ function App() {
 
     if (!file) return;
 
+    setPendingImageId(null);
+
     if (!["image/jpeg", "image/png"].includes(file.type)) {
       setUploadError("Please select a JPG or PNG image.");
       event.target.value = "";
@@ -195,7 +199,55 @@ setGradcamError("");
     event.target.value = "";
   }
 
-  // Complete image analysis workflow
+  // Prediction + Grad-CAM stage for an already uploaded image
+  async function runPrediction(imageId: string, acknowledge: boolean) {
+    setPendingImageId(null);
+    setProcessing(true);
+    setUploadError("");
+    setGradcamError("");
+    try {
+    // Step 4: Run experimental prediction
+    const predictionResult = await apiRequest<{
+      prediction_id: string;
+      predicted_label: string;
+      confidence: number;
+      class_scores: Record<string, number>;
+      model_version: string;
+      status: string;
+      disclaimer: string;
+    }>(`/predictions/${imageId}?acknowledge_quality_warning=${acknowledge}`, {
+      method: "POST",
+    });
+
+    // Preserve successful prediction independently
+    setPrediction(predictionResult);
+
+    // Step 5: Generate Grad-CAM independently
+    try {
+      const gradcamBlob = await apiRequestBlob(
+        `/predictions/${imageId}/gradcam?acknowledge_quality_warning=${acknowledge}`,
+      );
+
+      setGradcamUrl(URL.createObjectURL(gradcamBlob));
+    } catch (error) {
+      console.error("Grad-CAM generation failed:", error);
+
+      setGradcamError(
+        error instanceof Error
+          ? error.message
+          : "Prediction succeeded, but Grad-CAM visualization could not be generated.",
+      );
+    }
+    } catch (error) {
+      console.error("Prediction failed:", error);
+      setUploadError(
+        error instanceof Error ? error.message : "Prediction failed.",
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   // Complete image analysis workflow
 async function handleAnalyze() {
   if (!selectedFile || processing) return;
@@ -237,38 +289,13 @@ async function handleAnalyze() {
 
     setImageQuality(qualityResult);
 
-    // Step 4: Run experimental prediction
-    const predictionResult = await apiRequest<{
-      prediction_id: string;
-      predicted_label: string;
-      confidence: number;
-      class_scores: Record<string, number>;
-      model_version: string;
-      status: string;
-      disclaimer: string;
-    }>(`/predictions/${uploadedImage.image_id}`, {
-      method: "POST",
-    });
-
-    // Preserve successful prediction independently
-    setPrediction(predictionResult);
-
-    // Step 5: Generate Grad-CAM independently
-    try {
-      const gradcamBlob = await apiRequestBlob(
-        `/predictions/${uploadedImage.image_id}/gradcam`,
-      );
-
-      setGradcamUrl(URL.createObjectURL(gradcamBlob));
-    } catch (error) {
-      console.error("Grad-CAM generation failed:", error);
-
-      setGradcamError(
-        error instanceof Error
-          ? error.message
-          : "Prediction succeeded, but Grad-CAM visualization could not be generated.",
-      );
+    // Step 4: a quality WARNING needs explicit user confirmation
+    if (qualityResult.quality_status === "WARNING") {
+      setPendingImageId(uploadedImage.image_id);
+      return;
     }
+
+    await runPrediction(uploadedImage.image_id, false);
   } catch (error) {
     console.error("Image analysis failed:", error);
 
@@ -429,6 +456,7 @@ async function handleAnalyze() {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell refreshKey={prediction?.prediction_id} />
             <button
               onClick={handleLogout}
               disabled={loggingOut}
@@ -590,6 +618,31 @@ async function handleAnalyze() {
                           ? "Analyzing Research Image..."
                           : "Run AI Analysis"}
                       </button>
+                    )}
+
+                    {pendingImageId && (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <p className="font-semibold">Image quality warning</p>
+                        <p className="mt-1">
+                          This image may be blurry or have low texture. Predictions on such
+                          images may be less reliable. Continue with this image, or choose a clearer one.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          <button
+                            onClick={() => runPrediction(pendingImageId, true)}
+                            disabled={processing}
+                            className="rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-semibold text-white hover:bg-[#115e59] disabled:opacity-60"
+                          >
+                            Continue anyway
+                          </button>
+                          <button
+                            onClick={() => setPendingImageId(null)}
+                            className="rounded-lg border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          >
+                            Choose another image
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {uploadError && (

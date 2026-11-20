@@ -1,3 +1,4 @@
+from datetime import date, datetime as _dt, time as _time, timedelta as _td, timezone as _tz
 from math import ceil
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -99,6 +100,7 @@ def get_owned_image(
 def get_acceptable_quality_assessment(
     image_id: UUID,
     db: Session,
+    acknowledge_warning: bool = False,
 ):
     """Require an acceptable quality assessment before AI processing."""
 
@@ -122,6 +124,26 @@ def get_acceptable_quality_assessment(
                     "Image quality assessment is unavailable. "
                     "Please upload the image again."
                 ),
+            },
+        )
+
+    if assessment.quality_status == "WARNING":
+        if acknowledge_warning:
+            return assessment
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "IMAGE_QUALITY_WARNING",
+                "message": (
+                    "This image has a quality warning (possible blur "
+                    "or low texture). Replace it, or repeat the request "
+                    "with acknowledge_quality_warning=true to continue."
+                ),
+                "quality_status": assessment.quality_status,
+                "quality_flags": assessment.quality_flags,
+                "algorithm_version": assessment.algorithm_version,
+                "disclaimer": QUALITY_DISCLAIMER,
             },
         )
 
@@ -184,6 +206,8 @@ def get_safe_image_bytes(image_record: ImageModel) -> bytes:
 def get_prediction_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
+    date_from: date | None = Query(None, description="UTC date, inclusive"),
+    date_to: date | None = Query(None, description="UTC date, inclusive"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -191,6 +215,24 @@ def get_prediction_history(
     Return paginated prediction history belonging to the
     authenticated user only.
     """
+
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="date_from must not be after date_to.",
+        )
+
+    filters = [Case.owner_id == current_user.user_id]
+    if date_from:
+        filters.append(
+            Prediction.created_at
+            >= _dt.combine(date_from, _time.min, tzinfo=_tz.utc)
+        )
+    if date_to:
+        filters.append(
+            Prediction.created_at
+            < _dt.combine(date_to + _td(days=1), _time.min, tzinfo=_tz.utc)
+        )
 
     ownership_filter = (
         select(Prediction.prediction_id)
@@ -202,9 +244,7 @@ def get_prediction_history(
             Case,
             ImageModel.case_id == Case.case_id,
         )
-        .where(
-            Case.owner_id == current_user.user_id,
-        )
+        .where(*filters)
     )
 
     total = db.scalar(
@@ -235,9 +275,7 @@ def get_prediction_history(
             Prediction.model_version_id
             == ModelVersion.model_version_id,
         )
-        .where(
-            Case.owner_id == current_user.user_id,
-        )
+        .where(*filters)
         .order_by(
             Prediction.created_at.desc(),
             Prediction.prediction_id.desc(),
@@ -289,6 +327,7 @@ def get_prediction_history(
 )
 def create_prediction(
     image_id: UUID,
+    acknowledge_quality_warning: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -303,6 +342,7 @@ def create_prediction(
     get_acceptable_quality_assessment(
         image_record.image_id,
         db,
+        acknowledge_warning=acknowledge_quality_warning,
     )
 
     try:
@@ -387,6 +427,7 @@ def create_prediction(
 )
 def create_gradcam_visualization(
     image_id: UUID,
+    acknowledge_quality_warning: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -401,6 +442,7 @@ def create_gradcam_visualization(
     get_acceptable_quality_assessment(
         image_record.image_id,
         db,
+        acknowledge_warning=acknowledge_quality_warning,
     )
 
     try:

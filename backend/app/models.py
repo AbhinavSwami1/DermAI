@@ -1,10 +1,11 @@
 import uuid
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -135,6 +136,12 @@ class Case(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
+    )
+    clinical_notes: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
+    follow_up_date: Mapped[Optional[date]] = mapped_column(
+        Date, nullable=True
     )
 
     owner: Mapped["User"] = relationship(
