@@ -36,7 +36,7 @@ export default function Register({ onRegistered, onLogin, onBack }: Props) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-5">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-md border border-slate-200 bg-white p-6">
         <h1 className="text-xl font-bold text-slate-900">Create an account</h1>
         <label className="block text-sm text-slate-700">Full name
           <input className={field} value={fullName} onChange={(e) => setFullName(e.target.value)} required minLength={2} />

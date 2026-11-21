@@ -29,14 +29,14 @@ export default function ModelInsights() {
       <h2 className="text-xl font-bold text-slate-900">Research insights</h2>
       <p className="text-sm text-slate-600">Model version: {d.model_version ?? "n/a"}</p>
       {!d.available ? (
-        <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        <p className="rounded-md border border-slate-200 bg-white p-5 text-sm text-slate-600">
           Evaluation results are not available on this server. Run the evaluation script to generate
           ml/outputs/mobilenet_v3_large_finetuned/test_metrics.json.
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {scalars.map(([k, v]) => (
-            <div key={k} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div key={k} className="rounded-md border border-slate-200 bg-white p-4">
               <p className="text-xs capitalize text-slate-500">{label(k)}</p>
               <p className="mt-1 text-xl font-bold text-slate-900">{pct(v as number)}</p>
             </div>

@@ -41,7 +41,7 @@ export default function CaseNotes({ caseId }: { caseId: string }) {
   }
 
   return (
-    <details onToggle={onToggle} className="mt-4 rounded-lg border border-slate-200 p-3">
+    <details onToggle={onToggle} className="mt-4 rounded-md border border-slate-200 p-3">
       <summary className="cursor-pointer text-xs font-semibold text-slate-700">
         Case notes and follow-up
       </summary>

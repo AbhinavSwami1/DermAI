@@ -45,7 +45,7 @@ export default function NotificationBell({ refreshKey }: { refreshKey?: string }
         aria-label="Notifications"
         aria-expanded={open}
         onClick={() => { setOpen(!open); if (!open) load(); }}
-        className="relative rounded-xl border border-slate-200 p-3 text-slate-500 hover:bg-slate-50"
+        className="relative rounded border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
       >
         <Bell size={19} />
         {attention > 0 && (
@@ -56,7 +56,7 @@ export default function NotificationBell({ refreshKey }: { refreshKey?: string }
       </button>
 
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-0 z-30 mt-2 w-80 rounded border border-slate-200 bg-white p-3 ">
           <p className="text-sm font-semibold text-slate-900">Notifications</p>
           {error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}
           {data && data.items.length === 0 && (
@@ -64,7 +64,7 @@ export default function NotificationBell({ refreshKey }: { refreshKey?: string }
           )}
           <ul className="mt-2 max-h-80 space-y-2 overflow-y-auto">
             {data?.items.map((n) => (
-              <li key={n.id} className="rounded-lg border border-slate-100 p-2">
+              <li key={n.id} className="rounded-md border border-slate-100 p-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-slate-800">{n.title}</span>
                   <span className="text-[10px] uppercase text-slate-500">{levelLabel[n.level] ?? n.level}</span>

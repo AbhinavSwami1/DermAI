@@ -5,7 +5,7 @@ type Dict = Record<string, any>;
 
 function Stat({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-md border border-slate-200 bg-white p-4">
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-1 text-2xl font-bold text-slate-900">{String(value ?? "n/a")}</p>
     </div>
@@ -33,7 +33,7 @@ export default function StaffDashboard() {
   if (error) return <p role="alert" className="text-sm text-red-700">{error}</p>;
   if (!roles) return <p className="text-sm text-slate-500">Loading...</p>;
   if (!clin && !admin) {
-    return <p className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
+    return <p className="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-600">
       Staff dashboards are available to the Dermatologist and Administrator roles. Your roles: {roles.join(", ") || "none"}.</p>;
   }
 
@@ -48,7 +48,7 @@ export default function StaffDashboard() {
             <Stat label="Average model score" value={clin.average_model_score != null ? (clin.average_model_score * 100).toFixed(1) + "%" : "n/a"} />
             <Stat label={`Scores below ${clin.low_score_threshold} (review suggested)`} value={clin.low_score_analyses} />
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="rounded-md border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold">Predicted class distribution</h3>
             <table className="mt-2 w-full text-sm"><tbody>
               {Object.entries(clin.predicted_class_distribution).map(([k, v]) => (
@@ -56,7 +56,7 @@ export default function StaffDashboard() {
               ))}
             </tbody></table>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
+          <div className="overflow-x-auto rounded-md border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold">Recent analyses</h3>
             <table className="mt-2 w-full text-left text-sm">
               <thead className="text-xs text-slate-500"><tr><th>Date</th><th>Case</th><th>Class</th><th>Score</th></tr></thead>
@@ -82,7 +82,7 @@ export default function StaffDashboard() {
             <Stat label="Analyses" value={admin.total_analyses} />
             <Stat label="Analyses, last 7 days" value={admin.analyses_last_7_days} />
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="rounded-md border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold">Model usage</h3>
             <table className="mt-2 w-full text-sm"><tbody>
               {admin.model_usage.map((m: Dict) => (

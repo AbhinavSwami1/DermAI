@@ -15,21 +15,12 @@ import {
 } from "./api/client";
 
 import {
-  Activity,
-  ArrowRight,
-  BrainCircuit,
   ChartNoAxesCombined,
   Clock3,
-  FileImage,
-  FlaskConical,
   History,
   LayoutDashboard,
-  LogOut,
   Microscope,
   ShieldCheck,
-  Sparkles,
-  Upload,
-  UserRound,
   Users,
 } from "lucide-react";
 
@@ -49,7 +40,7 @@ type ImageQuality = {
 type ActiveView = "dashboard" | "history" | "insights" | "compare" | "staff";
 
 const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard, view: "dashboard" },
+  { label: "Overview", icon: LayoutDashboard, view: "dashboard" },
   { label: "New Analysis", icon: Microscope, view: "dashboard" },
   { label: "Analysis History", icon: History, view: "history" },
   { label: "Compare Analyses", icon: Clock3, view: "compare" },
@@ -60,6 +51,14 @@ const navigation = [
     view: "insights",
   },
 ] as const;
+
+const pageTitles: Record<ActiveView, [string, string]> = {
+  dashboard: ["Skin image analysis", "Upload an image to receive a model prediction."],
+  history: ["Analysis history", "Saved analyses, newest first."],
+  compare: ["Compare analyses", "Two saved analyses side by side."],
+  staff: ["Staff dashboards", "Aggregate counts for authorised roles."],
+  insights: ["Research insights", "Saved evaluation results for the deployed model."],
+};
 
 
 const conditions = [
@@ -143,10 +142,10 @@ function App() {
 
   const testAcc = insights?.test_metrics?.accuracy ?? insights?.test_metrics?.test_accuracy;
   const researchStats = [
-    { label: "Your Analyses", value: totalAnalyses ?? "-", change: "Saved in your history", icon: FileImage },
-    { label: "Test Accuracy", value: typeof testAcc === "number" ? (testAcc <= 1 ? (testAcc * 100).toFixed(2) + "%" : String(testAcc)) : "Not available", change: "Held-out test set (saved evaluation)", icon: BrainCircuit },
-    { label: "Supported Classes", value: insights?.num_classes ?? "-", change: (insights?.class_names ?? []).join(", "), icon: Activity },
-    { label: "Model Version", value: insights?.model_version ?? "-", change: "Currently deployed model", icon: FlaskConical },
+    { label: "Your Analyses", value: totalAnalyses ?? "-", change: "Saved in your history" },
+    { label: "Test Accuracy", value: typeof testAcc === "number" ? (testAcc <= 1 ? (testAcc * 100).toFixed(2) + "%" : String(testAcc)) : "Not available", change: "Held-out test set (saved evaluation)" },
+    { label: "Supported Classes", value: insights?.num_classes ?? "-", change: (insights?.class_names ?? []).join(", ") },
+    { label: "Model Version", value: insights?.model_version ?? "-", change: "Currently deployed model" },
   ];
 
   // Navigation handler
@@ -331,7 +330,7 @@ async function handleAnalyze() {
   // Session restoration screen
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f7fb]">
+      <div className="flex min-h-screen items-center justify-center bg-stone-100">
         <div className="text-center">
           <h2 className="text-lg font-bold text-slate-900">
             DermAI
@@ -352,125 +351,53 @@ async function handleAnalyze() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb]">
-      {/* Sidebar */}
-      <aside className="flex w-full flex-col border-r border-slate-200 bg-white text-slate-800 lg:fixed lg:inset-y-0 lg:w-64">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-7 py-7">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400 text-[#101d35]">
-            <Microscope size={25} />
-          </div>
-
-          <div>
-            <h1 className="text-xl font-bold tracking-wide text-slate-900">
-              DermAI
-            </h1>
-            <p className="text-xs text-slate-500">
-              Research Platform
-            </p>
-          </div>
-        </div>
-
-        <div className="px-5 pt-8">
-          <p className="mb-4 px-3 text-[10px] font-bold uppercase tracking-[2px] text-slate-500">
-            Workspace
-          </p>
-
-          <nav className="space-y-2">
-            {navigation.map(({ label, icon: Icon, view }) => {
-              const isActive =
-                label === "New Analysis"
-                  ? false
-                  : activeView === view;
-
+    <div className="min-h-screen bg-stone-100">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center gap-6 px-5 sm:px-8">
+          <span className="py-4 font-serif text-xl font-semibold text-slate-900">DermAI</span>
+          <nav className="flex flex-1 gap-1 overflow-x-auto" aria-label="Main">
+            {navigation.map(({ label, view }) => {
+              const isActive = label === "New Analysis" ? false : activeView === view;
               return (
                 <button
                   key={label}
-                  onClick={() =>
-                    handleNavigation(view as ActiveView, label)
-                  }
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition ${
+                  onClick={() => handleNavigation(view as ActiveView, label)}
+                  className={`whitespace-nowrap border-b-2 px-3 py-4 text-sm ${
                     isActive
-                      ? "bg-cyan-50 font-semibold text-cyan-800 ring-1 ring-cyan-100"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                      ? "border-cyan-700 font-semibold text-slate-900"
+                      : "border-transparent text-slate-500 hover:text-slate-900"
                   }`}
                 >
-                  <Icon size={19} />
                   {label}
                 </button>
               );
             })}
           </nav>
-        </div>
-
-
-        <div className="mt-auto hidden p-5 lg:block">
-          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4">
-            <div className="mb-3 flex items-center gap-2 text-cyan-700">
-              <ShieldCheck size={18} />
-              <span className="text-xs font-semibold">
-                Research Mode
-              </span>
-            </div>
-
-            <p className="text-xs leading-5 text-slate-600">
-              Experimental AI research platform. Not intended for
-              clinical diagnosis.
-            </p>
-          </div>
-
-          <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-700">
-              <UserRound size={20} />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold">{currentUser?.full_name ?? "Signed in"}</p>
-              <p className="text-xs text-slate-500">
-                {currentUser?.email ?? ""}
-              </p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="min-w-0 flex-1 lg:ml-64">
-        {/* Header */}
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-5 sm:px-9">
-          <div>
-            <p className="text-xs font-medium text-slate-400">
-              RESEARCH WORKSPACE / {activeView.toUpperCase()}
-            </p>
-
-            <h2 className="mt-1 text-xl font-bold text-slate-900">
-              {activeView === "history"
-                ? "Analysis History"
-                : activeView === "insights"
-                  ? "Research Insights"
-                  : activeView === "compare"
-                    ? "Compare Analyses"
-                    : activeView === "staff"
-                      ? "Staff Dashboards"
-                      : "Dashboard"}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 py-2">
             <NotificationBell refreshKey={prediction?.prediction_id} />
+            <span className="hidden text-sm text-slate-600 md:inline">{currentUser?.full_name ?? ""}</span>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <LogOut size={17} />
-              <span className="hidden sm:inline">
-                {loggingOut ? "Logging out..." : "Logout"}
-              </span>
+              {loggingOut ? "Logging out..." : "Log out"}
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="mx-auto max-w-7xl space-y-8 p-5 sm:p-9">
+      {/* Main Content */}
+      <main className="min-w-0">
+        {/* Page title */}
+        <div className="border-b border-slate-200 bg-white">
+          <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
+            <h1 className="text-2xl font-semibold text-slate-900">{pageTitles[activeView][0]}</h1>
+            <p className="mt-1 text-sm text-slate-500">{pageTitles[activeView][1]}</p>
+          </div>
+        </div>
+
+        <div className="mx-auto max-w-6xl space-y-8 px-5 py-8 sm:px-8">
           {/* Analysis History */}
           {activeView === "history" && <PredictionHistory />}
 
@@ -481,61 +408,18 @@ async function handleAnalyze() {
           {/* Dashboard */}
           {activeView === "dashboard" && (
             <>
-              {/* Welcome */}
-              <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-                <div>
-                  <p className="text-sm text-slate-500">
-                    Welcome to your research workspace
-                  </p>
-
-                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                    Skin Lesion Analysis
-                  </h2>
-
-                  <p className="mt-2 text-sm text-slate-500">
-                    Explore experimental deep learning research
-                    and model insights.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => handleNavigation("dashboard", "New Analysis")}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#0f766e] px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#115e59]"
-                >
-                  <Upload size={17} />
-                  New Analysis
-                  <ArrowRight size={16} />
-                </button>
-              </section>
-
-              {/* Statistics */}
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {researchStats.map(
-                  ({ label, value, change, icon: Icon }) => (
-                    <div
-                      key={label}
-                      className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-md"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-500">
-                          {label}
-                        </span>
-
-                        <div className="rounded-xl bg-cyan-50 p-2.5 text-cyan-700">
-                          <Icon size={20} />
-                        </div>
-                      </div>
-
-                      <p className="mt-5 text-3xl font-bold tracking-tight text-slate-900">
-                        {value}
-                      </p>
-
-                      <p className="mt-2 text-xs text-slate-400">
-                        {change}
-                      </p>
-                    </div>
-                  ),
-                )}
+              {/* Summary */}
+              <section
+                aria-label="Summary"
+                className="grid gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4"
+              >
+                {researchStats.map(({ label, value, change }) => (
+                  <div key={label} className="bg-white p-5">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+                    <p className="mt-2 break-words font-serif text-xl font-semibold text-slate-900">{value}</p>
+                    <p className="mt-1 text-xs text-slate-500">{change}</p>
+                  </div>
+                ))}
               </section>
 
               {/* Analysis and Model Information */}
@@ -543,41 +427,26 @@ async function handleAnalyze() {
                 {/* Image Analysis */}
                 <div
                   id="new-analysis"
-                  className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-[0_2px_10px_rgba(15,23,42,0.04)] xl:col-span-3"
+                  className="rounded-md border border-slate-200/70 bg-white p-6  xl:col-span-3"
                 >
                   <div className="mb-6">
-                    <div className="flex items-center gap-2 text-cyan-700">
-                      <Sparkles size={19} />
-                      <span className="text-xs font-bold uppercase tracking-wider">
-                        AI Analysis
-                      </span>
-                    </div>
-
-                    <h3 className="mt-2 text-xl font-bold text-slate-900">
-                      Start a new analysis
-                    </h3>
-
+                    <h3 className="text-xl font-semibold text-slate-900">Analyze an image</h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      Upload a skin lesion image to explore model
-                      predictions.
+                      Upload a JPEG or PNG photo of the skin area. The image is checked for
+                      quality before the model runs.
                     </p>
                   </div>
 
-                  <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/40 px-5 py-6 text-center">
+                  <div className="flex min-h-64 flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-5 py-6 text-center">
                     {!previewUrl ? (
                       <>
-                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-cyan-600 shadow-sm">
-                          <Upload size={29} />
-                        </div>
 
                         <h4 className="font-semibold text-slate-800">
-                          Upload your research image
+                          No image selected
                         </h4>
 
                         <p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">
-                          Select a JPG or PNG image from the
-                          PAD-UFES-20 or Fitzpatrick17k research
-                          datasets.
+                          Use a clear, well-lit close-up of the skin area.
                         </p>
                       </>
                     ) : (
@@ -585,7 +454,7 @@ async function handleAnalyze() {
                         <img
                           src={previewUrl}
                           alt="Selected research image preview"
-                          className="mb-4 max-h-64 max-w-full rounded-xl object-contain shadow-sm"
+                          className="mb-4 max-h-64 max-w-full rounded object-contain "
                         />
 
                         <p className="max-w-full break-all text-sm font-medium text-slate-700">
@@ -594,10 +463,10 @@ async function handleAnalyze() {
                       </>
                     )}
 
-                    <label className="mt-5 cursor-pointer rounded-xl bg-white px-5 py-3 text-sm font-semibold text-cyan-700 shadow-sm transition hover:bg-cyan-100">
+                    <label className="mt-5 cursor-pointer rounded bg-white px-5 py-3 text-sm font-semibold text-cyan-700  transition hover:bg-cyan-100">
                       {previewUrl
-                        ? "Choose Another Image"
-                        : "Select Research Image"}
+                        ? "Choose a different image"
+                        : "Choose image"}
 
                       <input
                         type="file"
@@ -612,16 +481,16 @@ async function handleAnalyze() {
                       <button
                         onClick={handleAnalyze}
                         disabled={processing}
-                        className="mt-3 rounded-xl bg-[#0f766e] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#115e59] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="mt-3 rounded bg-cyan-700 px-6 py-3 text-sm font-semibold text-white  transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {processing
-                          ? "Analyzing Research Image..."
-                          : "Run AI Analysis"}
+                          ? "Analyzing..."
+                          : "Analyze image"}
                       </button>
                     )}
 
                     {pendingImageId && (
-                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                      <div className="mt-4 rounded border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                         <p className="font-semibold">Image quality warning</p>
                         <p className="mt-1">
                           This image may be blurry or have low texture. Predictions on such
@@ -631,13 +500,13 @@ async function handleAnalyze() {
                           <button
                             onClick={() => runPrediction(pendingImageId, true)}
                             disabled={processing}
-                            className="rounded-lg bg-[#0f766e] px-4 py-2 text-xs font-semibold text-white hover:bg-[#115e59] disabled:opacity-60"
+                            className="rounded-md bg-cyan-700 px-4 py-2 text-xs font-semibold text-white hover:bg-cyan-800 disabled:opacity-60"
                           >
                             Continue anyway
                           </button>
                           <button
                             onClick={() => setPendingImageId(null)}
-                            className="rounded-lg border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                            className="rounded-md border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                           >
                             Choose another image
                           </button>
@@ -653,7 +522,7 @@ async function handleAnalyze() {
 
                     {/* Image Quality Assessment */}
                     {imageQuality && (
-                      <div className="mt-6 w-full rounded-xl border border-slate-200 bg-slate-50 p-5 text-left">
+                      <div className="mt-6 w-full rounded border border-slate-200 bg-slate-50 p-5 text-left">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
                             <h4 className="font-bold text-slate-900">
@@ -702,7 +571,7 @@ async function handleAnalyze() {
                           ].map((metric) => (
                             <div
                               key={metric.label}
-                              className="rounded-lg border border-slate-200 bg-white p-3"
+                              className="rounded-md border border-slate-200 bg-white p-3"
                             >
                               <p className="text-xs text-slate-500">
                                 {metric.label}
@@ -725,7 +594,7 @@ async function handleAnalyze() {
                               {imageQuality.quality_flags.map((flag) => (
                                 <span
                                   key={flag}
-                                  className="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800"
+                                  className="rounded-md bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-800"
                                 >
                                   {flag.replaceAll("_", " ")}
                                 </span>
@@ -744,7 +613,7 @@ async function handleAnalyze() {
                           {imageQuality.algorithm_version}
                         </p>
 
-                        <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                        <p className="mt-3 rounded-md bg-amber-50 p-3 text-xs leading-5 text-amber-800">
                           {imageQuality.disclaimer}
                         </p>
                       </div>
@@ -752,9 +621,9 @@ async function handleAnalyze() {
 
                     {/* Experimental Prediction */}
                     {prediction && (
-                      <div className="mt-6 w-full rounded-xl border border-cyan-100 bg-white p-5 text-left">
+                      <div className="mt-6 w-full rounded border border-cyan-100 bg-white p-5 text-left">
                         <h4 className="font-bold text-slate-900">
-                          Experimental Model Prediction
+                          Model prediction (experimental)
                         </h4>
 
                         <p className="mt-3 text-lg font-bold text-cyan-700">
@@ -832,18 +701,18 @@ async function handleAnalyze() {
                             <img
                               src={gradcamUrl}
                               alt="Grad-CAM attention visualization"
-                              className="w-full rounded-xl border border-slate-200"
+                              className="w-full rounded border border-slate-200"
                             />
                           </div>
                         )}
                         {gradcamError && (
-  <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+  <p className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
     Prediction completed successfully, but Grad-CAM visualization
     is unavailable: {gradcamError}
   </p>
 )}
 
-                        <p className="mt-5 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                        <p className="mt-5 rounded-md bg-amber-50 p-3 text-xs leading-5 text-amber-800">
                           Research prototype output only. This
                           prediction and Grad-CAM visualization are
                           not medical diagnoses and must not be used
@@ -859,7 +728,7 @@ async function handleAnalyze() {
                 </div>
 
                 {/* Model Information */}
-                <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-[0_2px_10px_rgba(15,23,42,0.04)] xl:col-span-2">
+                <div className="rounded-md border border-slate-200/70 bg-white p-6  xl:col-span-2">
                   <div className="mb-6 flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-slate-900">
@@ -869,10 +738,6 @@ async function handleAnalyze() {
                       <p className="mt-1 text-xs text-slate-400">
                         Current research baseline
                       </p>
-                    </div>
-
-                    <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600">
-                      <BrainCircuit size={21} />
                     </div>
                   </div>
 
@@ -900,7 +765,7 @@ async function handleAnalyze() {
                     ))}
                   </div>
 
-                  <div className="mt-5 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                  <div className="mt-5 flex items-center gap-2 rounded bg-amber-50 p-3 text-xs leading-5 text-amber-800">
                     <ShieldCheck size={18} className="shrink-0" />
                     Experimental model. Not clinically validated.
                   </div>
@@ -908,11 +773,11 @@ async function handleAnalyze() {
               </section>
 
               {/* Dataset Distribution */}
-              <section className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-[0_2px_10px_rgba(15,23,42,0.04)]">
+              <section className="rounded-md border border-slate-200/70 bg-white p-6 ">
                 <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">
-                      Research Dataset Distribution
+                      Dataset class distribution
                     </h3>
 
                     <p className="mt-1 text-xs text-slate-400">
@@ -920,7 +785,7 @@ async function handleAnalyze() {
                     </p>
                   </div>
 
-                  <span className="rounded-lg bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700">
+                  <span className="rounded-md bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700">
                     6 condition classes
                   </span>
                 </div>

@@ -24,7 +24,7 @@ function Panel({ item }: { item: Item }) {
   }, [item.image_id]);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-md border border-slate-200 bg-white p-4">
       <p className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</p>
       {src ? <img src={src} alt={item.original_filename} className="mt-3 max-h-72 w-full rounded-md object-contain bg-slate-50" />
            : <p className="mt-3 text-sm text-slate-500">Image unavailable.</p>}
@@ -56,7 +56,7 @@ export default function CompareAnalyses() {
   if (state === "loading") return <p className="text-sm text-slate-500">Loading analyses...</p>;
   if (state === "error") return <p role="alert" className="text-sm text-red-700">{error}</p>;
   if (items.length < 2) {
-    return <p className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
+    return <p className="rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-600">
       At least two saved analyses are needed for comparison. Run another analysis first.</p>;
   }
 

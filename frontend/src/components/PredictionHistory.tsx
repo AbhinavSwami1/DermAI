@@ -96,7 +96,7 @@ export default function PredictionHistory() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-4">
         <label className="text-xs text-slate-600">
           From
           <input type="date" value={dateFrom} onChange={(e) => { setPage(1); setDateFrom(e.target.value); }}
@@ -134,7 +134,7 @@ export default function PredictionHistory() {
         <button
           onClick={() => loadHistory(page)}
           disabled={loading}
-          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
           <RefreshCw
             size={16}
@@ -146,7 +146,7 @@ export default function PredictionHistory() {
 
       {/* Summary */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-md border border-slate-200 bg-white p-5">
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-500">
               Total Predictions
@@ -159,7 +159,7 @@ export default function PredictionHistory() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-md border border-slate-200 bg-white p-5">
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-500">
               Current Page
@@ -175,7 +175,7 @@ export default function PredictionHistory() {
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
+        <div className="rounded-md border border-slate-200 bg-white p-12 text-center">
           <RefreshCw
             className="mx-auto animate-spin text-cyan-700"
             size={30}
@@ -188,7 +188,7 @@ export default function PredictionHistory() {
 
       {/* Error */}
       {!loading && error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <div className="rounded-md border border-red-200 bg-red-50 p-6">
           <div className="flex items-center gap-3 text-red-700">
             <AlertCircle size={22} />
             <h3 className="font-semibold">
@@ -202,7 +202,7 @@ export default function PredictionHistory() {
 
           <button
             onClick={() => loadHistory(page)}
-            className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            className="mt-4 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
           >
             Try Again
           </button>
@@ -211,8 +211,8 @@ export default function PredictionHistory() {
 
       {/* Empty state */}
       {!loading && !error && history?.items.length === 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
+        <div className="rounded-md border border-slate-200 bg-white px-6 py-16 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-md bg-cyan-50 text-cyan-700">
             <FileImage size={30} />
           </div>
 
@@ -233,16 +233,16 @@ export default function PredictionHistory() {
           {history.items.map((item) => (
             <article
               key={item.prediction_id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+              className="rounded-md border border-slate-200 bg-white p-5  sm:p-6"
             >
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800">
+                    <span className="rounded-md bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800">
                       {item.predicted_label}
                     </span>
 
-                    <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                    <span className="rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                       {item.status}
                     </span>
                   </div>
@@ -261,7 +261,7 @@ export default function PredictionHistory() {
                   </p>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 p-4 sm:min-w-36 sm:text-right">
+                <div className="rounded bg-slate-50 p-4 sm:min-w-36 sm:text-right">
                   <p className="text-xs font-medium text-slate-500">
                     Model confidence
                   </p>
@@ -356,7 +356,7 @@ export default function PredictionHistory() {
 
       {/* Pagination */}
       {!loading && !error && history && history.total_pages > 1 && (
-        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col justify-between gap-4 rounded-md border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
           <p className="text-sm text-slate-500">
             Page {history.page} of {history.total_pages} · {history.total} records
           </p>
@@ -365,7 +365,7 @@ export default function PredictionHistory() {
             <button
               onClick={() => setPage((current) => Math.max(1, current - 1))}
               disabled={page <= 1}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-2 rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ArrowLeft size={16} />
               Previous
@@ -378,7 +378,7 @@ export default function PredictionHistory() {
                 )
               }
               disabled={page >= history.total_pages}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex items-center gap-2 rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
               <ArrowRight size={16} />
@@ -388,7 +388,7 @@ export default function PredictionHistory() {
       )}
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+      <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-5">
         <ShieldCheck className="mt-0.5 shrink-0 text-amber-700" size={20} />
 
         <div>

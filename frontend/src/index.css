@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+
+  /* Warm neutral scale (replaces the default cool slate) */
+  --color-slate-50: #faf9f7;
+  --color-slate-100: #f3f1ed;
+  --color-slate-200: #e4e1db;
+  --color-slate-300: #d0ccc4;
+  --color-slate-400: #a39f96;
+  --color-slate-500: #77736b;
+  --color-slate-600: #57534d;
+  --color-slate-700: #403d38;
+  --color-slate-800: #2a2825;
+  --color-slate-900: #1b1a18;
+  --color-stone-100: #f4f2ee;
+
+  /* Single accent: deep petrol */
+  --color-cyan-50: #eef4f5;
+  --color-cyan-100: #d8e6e8;
+  --color-cyan-200: #b4cfd3;
+  --color-cyan-300: #86b0b7;
+  --color-cyan-400: #5a8d96;
+  --color-cyan-500: #387781;
+  --color-cyan-600: #25626d;
+  --color-cyan-700: #1c4f58;
+  --color-cyan-800: #153e46;
+  --color-cyan-900: #0f2e34;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-slate-900);
+    background: var(--color-stone-100);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.005em;
+  }
+  button, label[class*="cursor-pointer"] { cursor: pointer; }
+  :focus-visible {
+    outline: 2px solid var(--color-cyan-700);
+    outline-offset: 2px;
+  }
+}
