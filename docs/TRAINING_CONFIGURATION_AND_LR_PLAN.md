@@ -35,3 +35,30 @@ Why each: 1e-5 is the existing fine-tuning setting and serves as the reference. 
 
 ## 4. Blockers
 Training logs/checkpoints are not committed; runs require the local dataset and Apple MPS/GPU.
+
+## 5. Learning-rate experiment results (run 2026-11-22)
+
+MobileNetV3-Large, started from the head-trained baseline checkpoint, `features[13:]` and `classifier[3]` trainable, same split, seed 42, batch size 16, Adam (weight decay 1e-4), up to 20 epochs with early stopping. Only the learning rate changed. Selection used validation only; the test split was not used.
+
+| Run | LR | Best epoch | Val loss at best | Val acc | Val bal. acc | Val macro F1 |
+|---|---|---|---|---|---|---|
+| mnv3_lr1e-3 | 0.001 | 7 | 1.103 | 65.93% | 60.32% | 58.81% |
+| mnv3_lr1e-4 | 0.0001 | 3 | 0.916 | 66.48% | 58.42% | 58.68% |
+| mnv3_lr1e-5 | 1e-05 | 1 | 1.273 | 50.69% | 54.34% | 45.16% |
+
+- lr 1e-3 and 1e-4 gave similar validation results (macro F1 difference +0.13 points); the evidence does not separate them. With 1e-3 the validation loss fluctuated strongly between epochs; with 1e-4 it was lowest early (epoch 3) and then rose as training accuracy climbed.
+- lr 1e-5 gave the lowest validation scores. The baseline checkpoint itself scored 0.5845 accuracy and 1.156 loss on validation before any training (measured separately), and the best epoch of this run was below that starting point, so training in this script at 1e-5 did not preserve the starting performance. The deployed model was trained at 1e-5 with a different script and reached 61.22% validation accuracy, so this result should not be read as showing that 1e-5 is unsuitable in general.
+
+### Repeat with the feature extractor in eval mode (BatchNorm statistics frozen)
+
+Same settings, plus `--features-eval`, which keeps `model.features` in eval mode during training as `ml/src/training/trainer.py` does.
+
+| Run | LR | Best epoch | Val acc | Val bal. acc | Val macro F1 | Val macro F1 without the flag |
+|---|---|---|---|---|---|---|
+| mnv3_lr1e-3_fe | 0.001 | 5 | 69.81% | 62.30% | 61.58% | 58.81% |
+| mnv3_lr1e-4_fe | 0.0001 | 1 | 63.43% | 57.45% | 54.72% | 58.68% |
+| mnv3_lr1e-5_fe | 1e-05 | 9 | 61.50% | 61.47% | 56.69% | 45.16% |
+
+- At lr 1e-5 with the feature extractor in eval mode, validation accuracy was 61.50% (starting checkpoint: 58.45%). This is at or above the starting point and above the run without the flag (50.69%), consistent with BatchNorm statistic updates explaining the earlier degradation; it is one run and does not prove the cause.
+- Single run per setting and a small validation set: treat differences of a few points as inconclusive.
+

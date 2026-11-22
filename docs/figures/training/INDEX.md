@@ -1,0 +1,35 @@
+# Training figures
+
+- efficientnet_b0__accuracy_curve.png
+- efficientnet_b0__loss_curve.png
+- efficientnet_b0__validation_confusion_matrix.png
+- gradcam__gradcam_1_ACK.png
+- gradcam__gradcam_2_BCC.png
+- gradcam__gradcam_3_MEL.png
+- gradcam__gradcam_4_NEV.png
+- gradcam__gradcam_5_SCC.png
+- gradcam__gradcam_6_SEK.png
+- mobilenet_v3_large__accuracy_curve.png
+- mobilenet_v3_large__loss_curve.png
+- mobilenet_v3_large__validation_confusion_matrix.png
+- mobilenet_v3_large_finetuned__accuracy_curve.png
+- mobilenet_v3_large_finetuned__loss_curve.png
+- mobilenet_v3_large_finetuned__test_confusion_matrix.png
+- mobilenet_v3_large_finetuned__validation_confusion_matrix.png
+- plots__mobilenet_accuracy_curve.png
+- plots__mobilenet_confusion_matrix.png
+- plots__mobilenet_loss_curve.png
+- experiment_convnext_tiny_lr1e-4__history.png
+- experiment_convnext_tiny_lr1e-4__val_confusion_matrix.png
+- experiment_convnext_tiny_lr1e-4__test_confusion_matrix.png
+- experiment_mnv3_lr1e-3__history.png
+- experiment_mnv3_lr1e-3__val_confusion_matrix.png
+- experiment_mnv3_lr1e-4__history.png
+- experiment_mnv3_lr1e-4__val_confusion_matrix.png
+- experiment_mnv3_lr1e-5__history.png
+- experiment_mnv3_lr1e-5__val_confusion_matrix.png
+- experiment_swin_t_lr1e-4__history.png
+- experiment_swin_t_lr1e-4__val_confusion_matrix.png
+- experiment_vit_b16_lr1e-5__history.png
+- experiment_vit_b16_lr1e-5__val_confusion_matrix.png
+- experiment_vit_b16_lr1e-5__test_confusion_matrix.png

@@ -283,3 +283,19 @@ The architecture and database schema document the current research prototype imp
 Project status: Research prototype implemented; further model evaluation, external validation and production hardening remain necessary.
 
 Medical disclaimer: DermAI is not a clinically validated diagnostic system. Its predictions must not be used to make medical decisions.
+
+## 10. Unresolved technical decisions
+
+| Decision | Current state | Options | Needed to decide |
+|---|---|---|---|
+| Image storage | Local filesystem (`backend/storage`, Docker volume) | S3, Azure Blob or MinIO for multiple instances | Hosting target, retention policy |
+| Inference placement | In-process in the API, single model, locked per request | Separate inference service or worker; GPU host | Latency and load measurements |
+| Processed images | Regenerated on demand, not stored | Persist and version them | Audit requirement for model input |
+| Synchronous inference | Prediction and Grad-CAM run inside the request | Queue with status polling | Heavier models (ConvNeXt, ViT) or concurrent users |
+| Model deployment | One checkpoint selected by environment variable | Model registry, rollback process, ConvNeXt-Tiny as the deployed model | Evidence from larger validation |
+| Authorisation beyond owner | Owners see their data; staff dashboards show aggregates only | Allow clinicians to open patient cases | Policy approval and consent design |
+| Data retention | Not defined | Deletion and retention periods for images, notes and reports | Ethics and privacy decision |
+| Notifications | Derived in the API, no read state | Email or SMS, read tracking | Delivery provider |
+| Public deployment | Docker Compose configured, not run | Cloud VM or container platform, HTTPS, secrets manager | Target host and budget |
+| Evaluation validity | Single dataset, synthetic quality validation | External dataset, expert quality labels | Data access |
+

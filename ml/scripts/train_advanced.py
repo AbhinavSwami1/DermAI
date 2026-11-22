@@ -119,6 +119,8 @@ def main():
     ap.add_argument("--patience", type=int, default=5)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--no-pretrained", action="store_true")
+    ap.add_argument("--features-eval", action="store_true",
+                    help="keep model.features in eval mode (BatchNorm statistics frozen), as ml/src/training/trainer.py does")
     ap.add_argument("--max-batches", type=int, default=None, help="smoke tests only")
     ap.add_argument("--eval-test", action="store_true", help="evaluate the selected best checkpoint on test (once)")
     args = ap.parse_args()
@@ -153,7 +155,10 @@ def main():
 
     best, best_epoch, bad, history, t0 = float("inf"), 0, 0, [], time.time()
     for epoch in range(1, args.epochs + 1):
-        model.train(); tl, tn, tc = 0.0, 0, 0
+        model.train()
+        if args.features_eval and hasattr(model, "features"):
+            model.features.eval()
+        tl, tn, tc = 0.0, 0, 0
         for i, (x, y) in enumerate(train_loader):
             if args.max_batches and i >= args.max_batches:
                 break

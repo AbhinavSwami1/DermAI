@@ -58,3 +58,13 @@ Not feasible with PAD-UFES-20: labels are disease names only, with no severity, 
 - Responsive layout (tablet/mobile) not systematically checked.
 - Screenshots and a demonstration recording must be captured from the running application and attached separately.
 - Not deployed to a public host; no HTTPS configured.
+
+
+## 10. Design decisions (answers to the Milestone 3 questions)
+- **Result screen versus history screen.** The result screen shows the analysis just produced in full: prediction, model score, Top-3, quality status, the preprocessed model input, Grad-CAM and export buttons. The history lists saved records (date, file, class, score, model version) and opens any record for its details and exports; the compare screen places two saved records side by side.
+- **Visible immediately versus on demand.** Immediately: predicted class, model score, Top-3, analysis time and the limitation statement. On demand: Grad-CAM (requested after the prediction is saved), model input, exports, case notes and comparison.
+- **If Grad-CAM is unavailable.** The analysis does not fail. Grad-CAM is a separate request made after the prediction is saved; a failure shows an error for the visualisation only and the prediction record remains.
+- **If the model is updated.** An old prediction is never replaced. A new analysis creates a new record linked to its model version; history shows the version, and the compare screen warns when two records used different versions.
+- **Distinguishing analyses on different dates.** Each analysis has its own prediction id, a UTC creation timestamp, and its image and case ids; history is ordered by time and can be filtered by date.
+- **Only real outputs are shown.** Results, scores, Top-3, dashboards and exports are read from saved prediction records written by the inference service. Two panels are static and labelled as such: the dataset class distribution (from the dataset audit) and the model information panel.
+- **Preprocessed image.** Shown in the result screen, regenerated deterministically from the stored original; it is not stored separately (`docs/PREPROCESSING_PIPELINE.md`).

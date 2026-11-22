@@ -3,6 +3,7 @@ import Login from "./components/Login";
 import PredictionHistory from "./components/PredictionHistory";
 import ReportActions from "./components/ReportActions";
 import NotificationBell from "./components/NotificationBell";
+import ProcessedImage from "./components/ProcessedImage";
 import CompareAnalyses from "./components/CompareAnalyses";
 import StaffDashboard from "./components/StaffDashboard";
 import ModelInsights from "./components/ModelInsights";
@@ -690,6 +691,8 @@ async function handleAnalyze() {
                           Scores are model outputs, not clinically validated probabilities.
                         </p>
                         <ReportActions predictionId={prediction.prediction_id} />
+
+                        <ProcessedImage key={prediction.prediction_id} imageId={prediction.image_id} />
 
                         {/* Grad-CAM */}
                         {gradcamUrl && (

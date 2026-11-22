@@ -39,3 +39,14 @@ Select the model on validation results. Then evaluate only the chosen run(s) on 
 
 ## Status
 Scripts are written and compile; they have not been run on the real dataset in this repository's environment. Results table: `docs/EXPERIMENT_RESULTS.md` (generated after runs).
+
+## One-command run (Swin-T, ViT-B/16, learning-rate runs)
+```
+caffeinate -i bash ml/scripts/run_remaining_experiments.sh
+```
+Trains `swin_t_lr1e-4`, `vit_b16_lr1e-5`, `mnv3_lr1e-3`, `mnv3_lr1e-4` and `mnv3_lr1e-5`, skips finished runs, and writes `docs/EXPERIMENT_RESULTS.md` (validation results). Then:
+```
+python ml/scripts/eval_run_on_test.py --run-id <chosen_run>        # test split, once, after selecting on validation
+python ml/scripts/compare_experiments.py --ensemble convnext_tiny_lr1e-4 <other_run> --with-test
+python ml/scripts/export_figures.py                                 # training curves and confusion matrices into docs/figures/training/
+```

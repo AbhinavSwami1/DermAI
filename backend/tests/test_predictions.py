@@ -742,3 +742,26 @@ def test_prediction_allowed_after_quality_warning_acknowledged(
     assert response.status_code == 201
     assert calls == [1]
     assert db_session.query(Prediction).count() == 1
+
+
+
+def test_processed_image_endpoint_owner_only(client, db_session, tmp_path, monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+
+    monkeypatch.setattr(upload, "STORAGE_DIR", tmp_path)
+    monkeypatch.setattr(predictions, "STORAGE_DIR", tmp_path)
+    case_id, headers = create_test_case(client)
+    image_id = upload_test_image(client, case_id, headers)
+
+    ok = client.get(f"/api/v1/images/{image_id}/processed", headers=headers)
+    assert ok.status_code == 200
+    assert ok.headers["content-type"] == "image/png"
+    assert Image.open(BytesIO(ok.content)).size == (224, 224)
+
+    info = client.get(f"/api/v1/images/{image_id}/processed/info", headers=headers)
+    assert info.status_code == 200 and info.json()["processed_size"] == [224, 224]
+
+    assert client.get(f"/api/v1/images/{image_id}/processed").status_code == 401
+    _, other = create_test_case(client)
+    assert client.get(f"/api/v1/images/{image_id}/processed", headers=other).status_code == 404
