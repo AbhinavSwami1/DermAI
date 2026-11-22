@@ -1,6 +1,6 @@
 # DermAI - Test Evidence
 
-Automated: `PYTHONPATH="$PWD:$PWD/backend" pytest -q backend/tests/` gave **81 passed** (2026-11-20, local PostgreSQL). Manual results are from the running application with real PAD-UFES-20 test images (2026-11-19/20). Responsible: A. Swami.
+Automated: `PYTHONPATH="$PWD:$PWD/backend" pytest -q backend/tests/` gave **90 passed** (2026-11-20, local PostgreSQL). Manual results are from the running application with real PAD-UFES-20 test images (2026-11-19/20). Responsible: A. Swami.
 
 ## A. Functional testing
 | Test case | Evidence | Result |
