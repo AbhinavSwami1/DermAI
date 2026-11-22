@@ -11,6 +11,7 @@ DermAI is an academic research prototype for skin-image analysis on PAD-UFES-20 
 | Preprocessing (224x224, ImageNet normalisation) | Implemented |
 | Classification (MobileNetV3-Large fine-tuned) with Top-3 and timestamp | Implemented, demonstrated |
 | Grad-CAM (original, heatmap, overlay) | Implemented, demonstrated |
+| Preprocessed model-input view (regenerated on demand, not stored) | Implemented |
 | Prediction history, individual records, comparison screen | Implemented, demonstrated |
 | PDF, CSV, JSON report export | Implemented, demonstrated |
 | Case notes, follow-up date, history date filter, notifications | Implemented, API tested; UI demonstration pending |
@@ -20,12 +21,36 @@ DermAI is an academic research prototype for skin-image analysis on PAD-UFES-20 
 | Lesion detection / segmentation | Not implemented: dataset has image-level labels only (`docs/GRADCAM_LOCALIZATION_REPORT.md`) |
 
 ## 2. Model experiments
-Same patient-level split (1,477 / 361 / 460), seed 42, weighted cross-entropy.
-| Model | Val acc | Val macro F1 | Test acc | Test macro F1 |
-|---|---|---|---|---|
-| MobileNetV3-Large fine-tuned (deployed) | 61.22% | 56.53% | 57.39% | 51.02% |
-| ConvNeXt-Tiny (lr 1e-4, best epoch 3) | 66.20% | 61.88% | 60.43% | 60.84% |
-MobileNetV3-Large versus EfficientNet-B0: see `docs/PHASE5_MODEL_COMPARISON_REPORT.md`. ConvNeXt-Tiny details and caveats: `docs/ADVANCED_MODELS_STATUS.md`. Accuracy differences are about one standard error on 460 images and are inconclusive; the macro F1 gain depends heavily on MEL (10 test images). SCC remains poor (ConvNeXt precision 0.17). ConvNeXt-Tiny is not deployed. Transformer, ensemble and learning-rate runs were not executed (scripts and plan: `docs/EXPERIMENT_RUNBOOK.md`).
+
+Same patient-level split (1,477 / 361 / 460), seed 42 and weighted cross-entropy for every run. Models were compared on validation; the test split was evaluated once, only for the two finalists (ConvNeXt-Tiny and ViT-B/16).
+
+| Model | Val acc | Val macro F1 | Test acc | Test macro F1 | ms per image | Params |
+|---|---|---|---|---|---|---|
+| MobileNetV3-Large fine-tuned (deployed) | 61.22% | 56.53% | 57.39% | 51.02% | - | 4.2M |
+| ConvNeXt-Tiny | 66.20% | 61.88% | 60.43% | 60.84% | 15.3 | 27.8M |
+| Swin-T | 64.82% | 61.74% | - | - | 19.3 | 27.5M |
+| ViT-B/16 | 71.75% | 66.04% | 67.39% | 62.46% | 32.9 | 85.8M |
+
+MobileNetV3-Large versus EfficientNet-B0: `docs/PHASE5_MODEL_COMPARISON_REPORT.md`.
+
+- ViT-B/16 had the best validation macro F1 (66.04%) and, among the models evaluated on test, the best test accuracy (67.39%) and macro F1 (62.46%).
+- ViT-B/16 was right and ConvNeXt-Tiny wrong on 76 test images, the reverse on 44 (exact McNemar p = 0.0045); single seed, one dataset.
+- SCC remains weak for ViT-B/16 on test: precision 0.21, recall 0.31 (39 images). MEL has only 10 test images.
+- Ensemble (mean softmax of ConvNeXt-Tiny and ViT-B/16): validation accuracy 70.36%, macro F1 64.93%, versus ViT-B/16 alone 71.75% and 66.04%. No validation gain, so it was not evaluated on test.
+
+Learning-rate experiment (MobileNetV3-Large, only the learning rate changed, validation macro F1):
+
+| LR | BatchNorm in training mode | Feature extractor in eval mode (original trainer) |
+|---|---|---|
+| 0.001 | 58.81% (acc 65.93%) | 61.58% (acc 69.81%) |
+| 0.0001 | 58.68% (acc 66.48%) | 54.72% (acc 63.43%) |
+| 1e-05 | 45.16% (acc 50.69%) | 56.69% (acc 61.50%) |
+
+- With the feature extractor in eval mode, lr 1e-5 gave 61.50% validation accuracy, close to the deployed model (61.22%); without it the run fell to 50.69%, below the starting checkpoint (58.45%). This is consistent with BatchNorm statistic updates causing the degradation (one run per setting).
+- The ranking of learning rates differed between the two setups, so the experiment is inconclusive about the best learning rate. Details: `docs/TRAINING_CONFIGURATION_AND_LR_PLAN.md`.
+
+- Overfitting: training accuracy reached 87% to 97% while validation accuracy stayed at 65% to 77%; validation loss was lowest at epoch 3 to 5 and early stopping ended each run.
+- Selected model: ViT-B/16 is the best research result. MobileNetV3-Large stays deployed: it is far smaller (4.2M versus 85.8M parameters) and faster, and Grad-CAM, calibration, tests and the Docker setup are built on it. Full tables: `docs/ADVANCED_MODELS_STATUS.md`. No clinical reliability is claimed.
 
 ## 3. Confidence and calibration (MobileNetV3-Large, test split)
 ECE 0.0739 to 0.0429 after temperature scaling (T = 1.135, fitted on validation only); NLL 1.057 to 1.043. Score at or above 0.8: 98 predictions, 14 incorrect (accuracy 85.7%); score below 0.5: accuracy 34.5%; 67 ambiguous predictions (top-1 minus top-2 below 0.10). The model is overconfident (mean score 64.5% versus accuracy 57.4%). Details: `docs/CALIBRATION_REPORT.md`.
@@ -50,10 +75,10 @@ Not feasible with PAD-UFES-20: labels are disease names only, with no severity, 
 - The warning acknowledgement is enforced but not stored.
 - Dashboard dataset distribution is a static reference from the audit report.
 - Notifications have no read state or external delivery.
+- Experiments are single runs with one seed on a small validation set; checkpoints are chosen by validation loss, which can pick an epoch with lower validation F1.
 
 ## 9. Unfinished work and blockers
 - Docker build and containerised workflow not executed (`docs/DOCKER_DEPLOYMENT.md`).
-- ViT/Swin, ensemble and learning-rate experiments not run (training time and hardware).
 - Manual reference labelling for quality validation not done.
 - Responsive layout (tablet/mobile) not systematically checked.
 - Screenshots and a demonstration recording must be captured from the running application and attached separately.
