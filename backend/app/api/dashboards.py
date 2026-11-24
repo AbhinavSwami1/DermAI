@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import require_roles
 from app.core.database import get_db
-from app.models import Case, Image as ImageModel, ModelVersion, Prediction, User
+from app.models import Case, Image as ImageModel, ImageQualityAssessment, ModelVersion, Prediction, User
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboards"])
 
@@ -72,4 +72,36 @@ def admin_dashboard(
             select(func.count()).select_from(Prediction).where(Prediction.created_at >= since)
         ) or 0,
         "model_usage": [{"model_name": n, "version": v, "analyses": c} for n, v, c in usage],
+    }
+
+
+@router.get("/research")
+def research_dashboard(
+    _: User = Depends(require_roles("Medical Researcher", "Data Scientist", "Administrator")),
+    db: Session = Depends(get_db),
+):
+    """De-identified aggregates only: no user, case or image identifiers are returned."""
+    def count_where(*conds):
+        return db.scalar(select(func.count()).select_from(Prediction).where(*conds)) or 0
+
+    dist = db.execute(select(Prediction.predicted_label, func.count()).group_by(Prediction.predicted_label)).all()
+    quality = db.execute(
+        select(ImageQualityAssessment.quality_status, func.count()).group_by(ImageQualityAssessment.quality_status)
+    ).all()
+    usage = db.execute(
+        select(ModelVersion.model_name, ModelVersion.version, func.count(Prediction.prediction_id))
+        .join(Prediction, Prediction.model_version_id == ModelVersion.model_version_id, isouter=True)
+        .group_by(ModelVersion.model_name, ModelVersion.version)
+    ).all()
+    return {
+        "total_analyses": count_where(),
+        "predicted_class_distribution": {k: v for k, v in dist},
+        "score_bands": {
+            "below_0.5": count_where(Prediction.confidence < 0.5),
+            "0.5_to_0.8": count_where(Prediction.confidence >= 0.5, Prediction.confidence < 0.8),
+            "0.8_and_above": count_where(Prediction.confidence >= 0.8),
+        },
+        "image_quality_status": {k: v for k, v in quality},
+        "model_usage": [{"model_name": n, "version": v, "analyses": c} for n, v, c in usage],
+        "note": "Aggregates only. Model scores are not clinically validated probabilities.",
     }

@@ -6,6 +6,7 @@ import NotificationBell from "./components/NotificationBell";
 import ProcessedImage from "./components/ProcessedImage";
 import CompareAnalyses from "./components/CompareAnalyses";
 import StaffDashboard from "./components/StaffDashboard";
+import UsersAdmin from "./components/UsersAdmin";
 import ModelInsights from "./components/ModelInsights";
 
 import {
@@ -38,14 +39,15 @@ type ImageQuality = {
   disclaimer: string;
 };
 
-type ActiveView = "dashboard" | "history" | "insights" | "compare" | "staff";
+type ActiveView = "dashboard" | "history" | "insights" | "compare" | "staff" | "users";
 
 const navigation = [
   { label: "Overview", icon: LayoutDashboard, view: "dashboard" },
   { label: "New Analysis", icon: Microscope, view: "dashboard" },
   { label: "Analysis History", icon: History, view: "history" },
   { label: "Compare Analyses", icon: Clock3, view: "compare" },
-  { label: "Staff Dashboards", icon: Users, view: "staff" },
+  { label: "Dashboards", icon: Users, view: "staff" },
+  { label: "Users and Roles", icon: Users, view: "users" },
   {
     label: "Research Insights",
     icon: ChartNoAxesCombined,
@@ -57,7 +59,8 @@ const pageTitles: Record<ActiveView, [string, string]> = {
   dashboard: ["Skin image analysis", "Upload an image to receive a model prediction."],
   history: ["Analysis history", "Saved analyses, newest first."],
   compare: ["Compare analyses", "Two saved analyses side by side."],
-  staff: ["Staff dashboards", "Aggregate counts for authorised roles."],
+  staff: ["Dashboards", "Aggregate figures for authorised roles."],
+  users: ["Users and roles", "Assign or remove roles. Administrators only."],
   insights: ["Research insights", "Saved evaluation results for the deployed model."],
 };
 
@@ -80,6 +83,13 @@ function App() {
   const [currentUser, setCurrentUser] = useState<{ full_name: string; email: string } | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState<number | null>(null);
   const [insights, setInsights] = useState<any>(null);
+  const [roles, setRoles] = useState<string[]>([]);
+  const isAdmin = roles.includes("Administrator");
+  const hasStaffView =
+    isAdmin || roles.some((r) => ["Dermatologist", "Medical Researcher", "Data Scientist"].includes(r));
+  const visibleNavigation = navigation.filter((item) =>
+    item.view === "staff" || item.view === "insights" ? hasStaffView : item.view === "users" ? isAdmin : true,
+  );
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pendingImageId, setPendingImageId] = useState<string | null>(null);
@@ -138,7 +148,15 @@ function App() {
     if (!authenticated) return;
     apiRequest<{ full_name: string; email: string }>("/users/me").then(setCurrentUser).catch(() => {});
     apiRequest<{ total: number }>("/predictions/history?page=1&page_size=1").then((d) => setTotalAnalyses(d.total)).catch(() => {});
-    apiRequest<any>("/insights/model-metrics").then(setInsights).catch(() => {});
+    apiRequest<any>("/roles/me").then((r) => setRoles(r.roles)).catch(() => {});
+    apiRequest<any>("/insights/model-info")
+      .then((info) => {
+        setInsights((prev: any) => ({ ...prev, ...info }));
+        apiRequest<any>("/insights/model-metrics")
+          .then((m) => setInsights((prev: any) => ({ ...prev, ...m })))
+          .catch(() => {});
+      })
+      .catch(() => {});
   }, [authenticated, prediction]);
 
   const testAcc = insights?.test_metrics?.accuracy ?? insights?.test_metrics?.test_accuracy;
@@ -357,7 +375,7 @@ async function handleAnalyze() {
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-5 sm:px-8">
           <span className="py-4 font-serif text-xl font-semibold text-slate-900">DermAI</span>
           <nav className="flex flex-1 gap-1 overflow-x-auto" aria-label="Main">
-            {navigation.map(({ label, view }) => {
+            {visibleNavigation.map(({ label, view }) => {
               const isActive = label === "New Analysis" ? false : activeView === view;
               return (
                 <button
@@ -376,7 +394,7 @@ async function handleAnalyze() {
           </nav>
           <div className="flex items-center gap-3 py-2">
             <NotificationBell refreshKey={prediction?.prediction_id} />
-            <span className="hidden text-sm text-slate-600 md:inline">{currentUser?.full_name ?? ""}</span>
+            <span className="hidden text-sm text-slate-600 md:inline">{currentUser?.full_name ?? ""}{roles.length ? ` (${roles.join(", ")})` : ""}</span>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
@@ -404,6 +422,7 @@ async function handleAnalyze() {
 
           {activeView === "compare" && <CompareAnalyses />}
           {activeView === "staff" && <StaffDashboard />}
+          {activeView === "users" && <UsersAdmin />}
           {activeView === "insights" && <ModelInsights />}
 
           {/* Dashboard */}
@@ -414,7 +433,7 @@ async function handleAnalyze() {
                 aria-label="Summary"
                 className="grid gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4"
               >
-                {researchStats.map(({ label, value, change }) => (
+                {researchStats.filter((st) => st.label !== "Test Accuracy" || typeof testAcc === "number").map(({ label, value, change }) => (
                   <div key={label} className="bg-white p-5">
                     <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
                     <p className="mt-2 break-words font-serif text-xl font-semibold text-slate-900">{value}</p>
@@ -464,7 +483,8 @@ async function handleAnalyze() {
                       </>
                     )}
 
-                    <label className="mt-5 cursor-pointer rounded bg-white px-5 py-3 text-sm font-semibold text-cyan-700  transition hover:bg-cyan-100">
+                    <div className="mt-5 flex flex-wrap justify-center gap-3">
+                      <label className="cursor-pointer rounded bg-white px-5 py-3 text-sm font-semibold text-cyan-700  transition hover:bg-cyan-100">
                       {previewUrl
                         ? "Choose a different image"
                         : "Choose image"}
@@ -477,6 +497,20 @@ async function handleAnalyze() {
                         onChange={handleFileSelection}
                       />
                     </label>
+                      <label className="cursor-pointer rounded bg-white px-5 py-3 text-sm font-semibold text-cyan-700  transition hover:bg-cyan-100">
+                      Take photo
+
+                      <input
+                        type="file"
+                        capture="environment"
+                        accept="image/jpeg,image/png"
+                        className="hidden"
+                        disabled={processing}
+                        onChange={handleFileSelection}
+                      />
+                    </label>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">On a phone, Take photo opens the camera.</p>
 
                     {selectedFile && (
                       <button

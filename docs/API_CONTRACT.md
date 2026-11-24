@@ -64,6 +64,25 @@ Scores are softmax outputs, not clinically validated probabilities.
 
 ## Endpoints (generated from the code)
 
+### GET /api/v1/admin/users
+
+List registered users with their roles (administrator only).
+
+- Tag: Administration
+- Authentication: Bearer token, roles: 
+- Success: 200
+
+### DELETE /api/v1/admin/users/{user_id}/roles/{role_name}
+
+Remove one role from a user (administrator only).
+
+- Tag: Administration
+- Authentication: Bearer token, roles: 
+- Parameter `user_id` (path, UUID, required)
+- Parameter `role_name` (path, RoleName, required)
+- Success: 200
+- Errors raised in this handler: 400 Administrators cannot remove their own Administrator role.; 404 Role assignment not found.; 500 Unable to remove the role.
+
 ### POST /api/v1/auth/login
 
 - Tag: Authentication
@@ -129,6 +148,14 @@ Scores are softmax outputs, not clinically validated probabilities.
 - Authentication: Bearer token, roles: 
 - Success: 200
 
+### GET /api/v1/dashboard/research
+
+De-identified aggregates only: no user, case or image identifiers are returned.
+
+- Tag: Dashboards
+- Authentication: Bearer token, roles: 
+- Success: 200
+
 ### GET /api/v1/images/{image_id}/quality
 
 - Tag: Images
@@ -166,12 +193,20 @@ Describe the preprocessing steps applied to an owned image.
 - Success: 200
 - Errors raised in this handler: 422 Unable to preprocess the stored image.
 
-### GET /api/v1/insights/model-metrics
+### GET /api/v1/insights/model-info
 
-Serve saved evaluation artifacts; nothing is hardcoded.
+Deployed model version and class list (any signed-in user).
 
 - Tag: Insights
 - Authentication: Bearer token
+- Success: 200
+
+### GET /api/v1/insights/model-metrics
+
+Saved evaluation metrics (research and staff roles only).
+
+- Tag: Insights
+- Authentication: Bearer token, roles: 
 - Success: 200
 
 ### GET /api/v1/notifications

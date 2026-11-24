@@ -17,6 +17,7 @@ from app.api.reports import router as reports_router
 from app.api.dashboards import router as dashboards_router
 from app.api.insights import router as insights_router
 from app.api.notifications import router as notifications_router
+from app.api.admin import router as admin_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
@@ -72,3 +73,4 @@ app.include_router(reports_router)
 app.include_router(dashboards_router)
 app.include_router(insights_router)
 app.include_router(notifications_router)
+app.include_router(admin_router)

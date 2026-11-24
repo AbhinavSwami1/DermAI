@@ -47,6 +47,7 @@ export default function Register({ onRegistered, onLogin, onBack }: Props) {
         <label className="block text-sm text-slate-700">Password (min. 8 characters)
           <input type="password" className={field} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </label>
+        <p className="text-xs leading-5 text-slate-500">New accounts start as Patient. Staff roles (Dermatologist, Medical Researcher, Data Scientist, Administrator) are assigned by an administrator.</p>
         {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-md bg-cyan-700 py-2.5 text-sm font-semibold text-white hover:bg-cyan-800 disabled:opacity-60">
           {loading && <Loader2 size={16} className="animate-spin" />} Register

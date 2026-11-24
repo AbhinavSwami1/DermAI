@@ -11,6 +11,8 @@ DermAI is an academic research prototype for skin-image analysis on PAD-UFES-20 
 | Preprocessing (224x224, ImageNet normalisation) | Implemented |
 | Classification (MobileNetV3-Large fine-tuned) with Top-3 and timestamp | Implemented, demonstrated |
 | Grad-CAM (original, heatmap, overlay) | Implemented, demonstrated |
+| Role-based access (Patient, Dermatologist, Medical Researcher, Data Scientist, Administrator), user and role management | Implemented, 6 tests, enforced by the backend (`docs/ROLE_BASED_ACCESS.md`) |
+| Mobile photo capture (Take photo) | Implemented; phone capture not yet verified (`docs/MOBILE_CAPTURE.md`) |
 | Preprocessed model-input view (regenerated on demand, not stored) | Implemented |
 | Prediction history, individual records, comparison screen | Implemented, demonstrated |
 | PDF, CSV, JSON report export | Implemented, demonstrated |
@@ -65,7 +67,7 @@ Heatmaps differ per image and stay aligned. They centre on the lesion for the BC
 Not feasible with PAD-UFES-20: labels are disease names only, with no severity, stage, outcome or urgency. No risk score is shown. See `docs/RISK_SEVERITY_FEASIBILITY_REPORT.md`.
 
 ## 7. Testing
-90 automated tests pass; manual workflow checks and the full matrix are in `docs/TEST_EVIDENCE.md`.
+96 automated tests pass; manual workflow checks and the full matrix are in `docs/TEST_EVIDENCE.md`.
 
 ## 8. Known limitations
 - Small dataset and test set; rare classes (MEL, SCC) have very few samples; no external validation.
